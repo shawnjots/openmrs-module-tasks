@@ -55,6 +55,27 @@
 	<build>
 		<pluginManagement>
 			<plugins>
+				<plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <target>21</target>
+                        <source>21</source>
+                        <encoding>UTF-8</encoding>
+                    </configuration>
+                </plugin>
+				<!-- Surefire plugin for Java 21 compatibility with old Mockito/PowerMock -->
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<configuration>
+						<argLine>
+							--add-opens java.base/java.lang=ALL-UNNAMED
+							--add-opens java.base/java.lang.invoke=ALL-UNNAMED
+							--add-opens java.base/java.util=ALL-UNNAMED
+						</argLine>
+					</configuration>
+				</plugin>
 				<!-- Spotless plugin -->
 				<plugin>
 					<groupId>com.diffplug.spotless</groupId>

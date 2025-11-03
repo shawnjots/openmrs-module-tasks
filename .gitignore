@@ -1,0 +1,10 @@
+.classpath
+.settings
+.project
+target/
+activemq-data/
+.idea/
+*.iml
+*.sass-cache
+*.DS_Store
+/bin/
