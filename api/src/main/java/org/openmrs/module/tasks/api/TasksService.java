@@ -37,7 +37,8 @@ public interface TasksService extends OpenmrsService {
 	Task getTaskByUuid(String uuid) throws APIException;
 	
 	/**
-	 * Saves a task. It can be called by users with this module's privilege. It is executed in a transaction.
+	 * Saves a task. It can be called by users with this module's privilege. It is executed in a
+	 * transaction.
 	 * 
 	 * @param task
 	 * @return
@@ -48,8 +49,8 @@ public interface TasksService extends OpenmrsService {
 	Task saveTask(Task task) throws APIException;
 	
 	/**
-	 * Returns all tasks for a patient. It can be called by any authenticated user. It is fetched in read
-	 * only transaction.
+	 * Returns all tasks for a patient. It can be called by any authenticated user. It is fetched in
+	 * read only transaction.
 	 * 
 	 * @param patientId
 	 * @return

@@ -16,11 +16,11 @@ import org.openmrs.User;
 import org.openmrs.module.tasks.Task;
 
 /**
- * Mapper to convert between Task entity and FHIR CarePlan resource.
- * Each Task corresponds to a CarePlan with one activity, with task details stored in activity.detail.
+ * Mapper to convert between Task entity and FHIR CarePlan resource. Each Task corresponds to a
+ * CarePlan with one activity, with task details stored in activity.detail.
  */
 public class CarePlanMapper {
-
+	
 	/**
 	 * Converts a Task entity to a FHIR CarePlan resource.
 	 * 
@@ -55,7 +55,8 @@ public class CarePlanMapper {
 			} else {
 				detail.setKind(CarePlan.CarePlanActivityKind.APPOINTMENT);
 			}
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			// If the kind doesn't match an enum, use a default
 			detail.setKind(CarePlan.CarePlanActivityKind.APPOINTMENT);
 		}
@@ -79,7 +80,7 @@ public class CarePlanMapper {
 		
 		return carePlan;
 	}
-
+	
 	/**
 	 * Converts a FHIR CarePlan resource to a Task entity.
 	 * 
@@ -101,7 +102,7 @@ public class CarePlanMapper {
 			CarePlan.CarePlanActivityComponent activity = carePlan.getActivity().get(0);
 			if (activity.hasDetail()) {
 				CarePlan.CarePlanActivityDetailComponent detail = activity.getDetail();
-
+				
 				if (detail.hasKind()) {
 					CarePlan.CarePlanActivityKind kind = detail.getKind();
 					if (kind != null) {
@@ -124,4 +125,3 @@ public class CarePlanMapper {
 		return task;
 	}
 }
-

@@ -39,9 +39,7 @@ public class TasksDao {
 	
 	@SuppressWarnings("unchecked")
 	public List<Task> getTasksByPatientId(Integer patientId) {
-		return getSession().createCriteria(Task.class)
-				.add(Restrictions.eq("patient.id", patientId))
-				.add(Restrictions.eq("voided", false))
-				.list();
+		return getSession().createCriteria(Task.class).add(Restrictions.eq("patient.id", patientId))
+		        .add(Restrictions.eq("voided", false)).list();
 	}
 }

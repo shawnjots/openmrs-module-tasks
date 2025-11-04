@@ -35,26 +35,26 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import java.util.List;
 
 /**
- * REST controller for FHIR v4 CarePlan endpoints.
- * Each task corresponds to a CarePlan with one activity.
+ * REST controller for FHIR v4 CarePlan endpoints. Each task corresponds to a CarePlan with one
+ * activity.
  */
 @org.springframework.stereotype.Controller
 @RequestMapping("/fhir/CarePlan")
 public class CarePlanRestController {
-
+	
 	private static final FhirContext fhirContext = FhirContext.forR4();
-
+	
 	@Autowired
 	private TasksService tasksService;
-
+	
 	private CarePlanMapper carePlanMapper = new CarePlanMapper();
-
+	
 	@Autowired
 	private PatientService patientService;
-
+	
 	@Autowired
 	private UserService userService;
-
+	
 	/**
 	 * Creates a CarePlan from the provided FHIR CarePlan JSON.
 	 * 
@@ -67,7 +67,7 @@ public class CarePlanRestController {
 		try {
 			IParser parser = fhirContext.newJsonParser();
 			CarePlan carePlan = parser.parseResource(CarePlan.class, carePlanJson);
-
+			
 			// Resolve patient reference
 			Patient patient = null;
 			if (carePlan.hasSubject() && carePlan.getSubject().hasReference()) {
@@ -80,17 +80,17 @@ public class CarePlanRestController {
 					}
 				}
 			}
-
+			
 			if (patient == null) {
 				return createErrorResponse("Patient reference is required", HttpStatus.BAD_REQUEST);
 			}
-
+			
 			// Resolve assignee (performer) reference if present
 			User assignee = null;
 			if (carePlan.hasActivity() && !carePlan.getActivity().isEmpty()) {
 				CarePlan.CarePlanActivityComponent activity = carePlan.getActivity().get(0);
 				if (activity.hasDetail() && activity.getDetail().hasPerformer()
-						&& !activity.getDetail().getPerformer().isEmpty()) {
+				        && !activity.getDetail().getPerformer().isEmpty()) {
 					Reference performerRef = activity.getDetail().getPerformer().get(0);
 					if (performerRef.hasReference()) {
 						String userRef = performerRef.getReference();
@@ -102,25 +102,26 @@ public class CarePlanRestController {
 					}
 				}
 			}
-
+			
 			// Convert CarePlan to Task
 			Task task = carePlanMapper.toTask(carePlan, patient, assignee);
-
+			
 			// Save task
 			Task savedTask = tasksService.saveTask(task);
-
+			
 			// Convert back to CarePlan
 			CarePlan savedCarePlan = carePlanMapper.toCarePlan(savedTask);
-
+			
 			// Serialize to JSON
 			String responseJson = parser.encodeResourceToString(savedCarePlan);
 			return new ResponseEntity<String>(responseJson, HttpStatus.CREATED);
-
-		} catch (Exception e) {
+			
+		}
+		catch (Exception e) {
 			return createErrorResponse("Error creating CarePlan: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
-
+	
 	/**
 	 * Gets all CarePlans for a patient.
 	 * 
@@ -133,26 +134,26 @@ public class CarePlanRestController {
 		try {
 			if (subject == null || !subject.startsWith("Patient/")) {
 				return createErrorResponse("subject parameter is required in format 'Patient/{patientId}'",
-						HttpStatus.BAD_REQUEST);
+				    HttpStatus.BAD_REQUEST);
 			}
-
+			
 			String patientIdStr = subject.substring("Patient/".length());
 			Integer patientId = Integer.parseInt(patientIdStr);
-
+			
 			// Verify patient exists
 			Patient patient = patientService.getPatient(patientId);
 			if (patient == null) {
 				return createErrorResponse("Patient not found: " + patientId, HttpStatus.NOT_FOUND);
 			}
-
+			
 			// Get tasks for patient
 			List<Task> tasks = tasksService.getTasksByPatientId(patientId);
-
+			
 			// Convert to CarePlans and create Bundle
 			Bundle bundle = new Bundle();
 			bundle.setType(Bundle.BundleType.SEARCHSET);
 			bundle.setTotal(tasks.size());
-
+			
 			CarePlanMapper mapper = new CarePlanMapper();
 			for (Task task : tasks) {
 				CarePlan carePlan = mapper.toCarePlan(task);
@@ -160,20 +161,21 @@ public class CarePlanRestController {
 				entry.setResource(carePlan);
 				bundle.addEntry(entry);
 			}
-
+			
 			// Serialize to JSON
 			IParser parser = fhirContext.newJsonParser();
 			String responseJson = parser.encodeResourceToString(bundle);
 			return new ResponseEntity<String>(responseJson, HttpStatus.OK);
-
-		} catch (NumberFormatException e) {
+			
+		}
+		catch (NumberFormatException e) {
 			return createErrorResponse("Invalid patient ID format", HttpStatus.BAD_REQUEST);
-		} catch (Exception e) {
-			return createErrorResponse("Error retrieving CarePlans: " + e.getMessage(),
-					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		catch (Exception e) {
+			return createErrorResponse("Error retrieving CarePlans: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
-
+	
 	/**
 	 * Creates an error response with FHIR OperationOutcome.
 	 */
@@ -183,10 +185,9 @@ public class CarePlanRestController {
 		issue.setSeverity(OperationOutcome.IssueSeverity.ERROR);
 		issue.setCode(OperationOutcome.IssueType.PROCESSING);
 		issue.setDiagnostics(message);
-
+		
 		IParser parser = fhirContext.newJsonParser();
 		String json = parser.encodeResourceToString(outcome);
 		return new ResponseEntity<String>(json, status);
 	}
 }
-
