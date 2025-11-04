@@ -10,17 +10,16 @@
 package org.openmrs.module.tasks.api.impl;
 
 import org.openmrs.api.APIException;
-import org.openmrs.api.UserService;
 import org.openmrs.api.impl.BaseOpenmrsService;
-import org.openmrs.module.tasks.Item;
+import org.openmrs.module.tasks.Task;
 import org.openmrs.module.tasks.api.TasksService;
 import org.openmrs.module.tasks.api.dao.TasksDao;
+
+import java.util.List;
 
 public class TasksServiceImpl extends BaseOpenmrsService implements TasksService {
 	
 	TasksDao dao;
-	
-	UserService userService;
 	
 	/**
 	 * Injected in moduleApplicationContext.xml
@@ -29,24 +28,18 @@ public class TasksServiceImpl extends BaseOpenmrsService implements TasksService
 		this.dao = dao;
 	}
 	
-	/**
-	 * Injected in moduleApplicationContext.xml
-	 */
-	public void setUserService(UserService userService) {
-		this.userService = userService;
+	@Override
+	public Task getTaskByUuid(String uuid) throws APIException {
+		return dao.getTaskByUuid(uuid);
 	}
 	
 	@Override
-	public Item getItemByUuid(String uuid) throws APIException {
-		return dao.getItemByUuid(uuid);
+	public Task saveTask(Task task) throws APIException {
+		return dao.saveTask(task);
 	}
 	
 	@Override
-	public Item saveItem(Item item) throws APIException {
-		if (item.getOwner() == null) {
-			item.setOwner(userService.getUser(1));
-		}
-		
-		return dao.saveItem(item);
+	public List<Task> getTasksByPatientId(Integer patientId) throws APIException {
+		return dao.getTasksByPatientId(patientId);
 	}
 }

@@ -10,14 +10,17 @@
 package org.openmrs.module.tasks.api.dao;
 
 import org.junit.Test;
-import org.junit.Ignore;
+import org.openmrs.Patient;
+import org.openmrs.api.PatientService;
 import org.openmrs.api.UserService;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.tasks.Item;
+import org.openmrs.module.tasks.Task;
 import org.openmrs.test.BaseModuleContextSensitiveTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
+
+import java.util.List;
 
 /**
  * It is an integration test (extends BaseModuleContextSensitiveTest), which verifies DAO methods
@@ -31,28 +34,67 @@ public class TasksDaoTest extends BaseModuleContextSensitiveTest {
 	TasksDao dao;
 	
 	@Autowired
+	PatientService patientService;
+	
+	@Autowired
 	UserService userService;
 	
 	@Test
-	@Ignore("Unignore if you want to make the Item class persistable, see also Item and liquibase.xml")
-	public void saveItem_shouldSaveAllPropertiesInDb() {
+	public void saveTask_shouldSaveAllPropertiesInDb() {
 		//Given
-		Item item = new Item();
-		item.setDescription("some description");
-		item.setOwner(userService.getUser(1));
+		Task task = new Task();
+		task.setDescription("some description");
+		task.setStatus("not-started");
+		task.setKind("Appointment");
+		Patient patient = patientService.getPatient(2);
+		task.setPatient(patient);
+		task.setAssignee(userService.getUser(1));
 		
 		//When
-		dao.saveItem(item);
+		dao.saveTask(task);
 		
-		//Let's clean up the cache to be sure getItemByUuid fetches from DB and not from cache
+		//Let's clean up the cache to be sure getTaskByUuid fetches from DB and not from cache
 		Context.flushSession();
 		Context.clearSession();
 		
 		//Then
-		Item savedItem = dao.getItemByUuid(item.getUuid());
+		Task savedTask = dao.getTaskByUuid(task.getUuid());
 		
-		assertThat(savedItem, hasProperty("uuid", is(item.getUuid())));
-		assertThat(savedItem, hasProperty("owner", is(item.getOwner())));
-		assertThat(savedItem, hasProperty("description", is(item.getDescription())));
+		assertThat(savedTask, hasProperty("uuid", is(task.getUuid())));
+		assertThat(savedTask, hasProperty("patient", is(task.getPatient())));
+		assertThat(savedTask, hasProperty("description", is(task.getDescription())));
+		assertThat(savedTask, hasProperty("status", is(task.getStatus())));
+		assertThat(savedTask, hasProperty("kind", is(task.getKind())));
+		assertThat(savedTask, hasProperty("assignee", is(task.getAssignee())));
+	}
+	
+	@Test
+	public void getTasksByPatientId_shouldReturnTasksForPatient() {
+		//Given
+		Patient patient = patientService.getPatient(2);
+		
+		Task task1 = new Task();
+		task1.setDescription("Task 1");
+		task1.setStatus("not-started");
+		task1.setKind("Appointment");
+		task1.setPatient(patient);
+		dao.saveTask(task1);
+		
+		Task task2 = new Task();
+		task2.setDescription("Task 2");
+		task2.setStatus("in-progress");
+		task2.setKind("MedicationRequest");
+		task2.setPatient(patient);
+		dao.saveTask(task2);
+		
+		Context.flushSession();
+		Context.clearSession();
+		
+		//When
+		List<Task> tasks = dao.getTasksByPatientId(patient.getId());
+		
+		//Then
+		assertThat(tasks.size(), is(2));
+		assertThat(tasks, hasItems(hasProperty("description", is("Task 1")), hasProperty("description", is("Task 2"))));
 	}
 }

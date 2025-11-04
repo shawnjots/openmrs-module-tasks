@@ -14,14 +14,16 @@ import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.openmrs.User;
-import org.openmrs.api.UserService;
-import org.openmrs.module.tasks.Item;
+import org.openmrs.Patient;
+import org.openmrs.module.tasks.Task;
 import org.openmrs.module.tasks.api.dao.TasksDao;
 import org.openmrs.module.tasks.api.impl.TasksServiceImpl;
 import static org.mockito.Mockito.*;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This is a unit test, which verifies logic in TasksService. It doesn't extend
@@ -30,13 +32,10 @@ import static org.junit.Assert.*;
 public class TasksServiceTest {
 	
 	@InjectMocks
-	TasksServiceImpl basicModuleService;
+	TasksServiceImpl tasksService;
 	
 	@Mock
 	TasksDao dao;
-	
-	@Mock
-	UserService userService;
 	
 	@Before
 	public void setupMocks() {
@@ -44,20 +43,57 @@ public class TasksServiceTest {
 	}
 	
 	@Test
-	public void saveItem_shouldSetOwnerIfNotSet() {
+	public void saveTask_shouldDelegateToDao() {
 		//Given
-		Item item = new Item();
-		item.setDescription("some description");
+		Task task = new Task();
+		task.setDescription("some description");
+		task.setStatus("not-started");
+		task.setKind("Appointment");
 		
-		when(dao.saveItem(item)).thenReturn(item);
-		
-		User user = new User();
-		when(userService.getUser(1)).thenReturn(user);
+		when(dao.saveTask(task)).thenReturn(task);
 		
 		//When
-		basicModuleService.saveItem(item);
+		Task savedTask = tasksService.saveTask(task);
 		
 		//Then
-		assertThat(item, hasProperty("owner", is(user)));
+		verify(dao).saveTask(task);
+		assertThat(savedTask, is(task));
+	}
+	
+	@Test
+	public void getTaskByUuid_shouldDelegateToDao() {
+		//Given
+		String uuid = "test-uuid";
+		Task task = new Task();
+		task.setUuid(uuid);
+		
+		when(dao.getTaskByUuid(uuid)).thenReturn(task);
+		
+		//When
+		Task foundTask = tasksService.getTaskByUuid(uuid);
+		
+		//Then
+		verify(dao).getTaskByUuid(uuid);
+		assertThat(foundTask, is(task));
+	}
+	
+	@Test
+	public void getTasksByPatientId_shouldDelegateToDao() {
+		//Given
+		Integer patientId = 2;
+		List<Task> tasks = new ArrayList<>();
+		Task task1 = new Task();
+		task1.setDescription("Task 1");
+		tasks.add(task1);
+		
+		when(dao.getTasksByPatientId(patientId)).thenReturn(tasks);
+		
+		//When
+		List<Task> foundTasks = tasksService.getTasksByPatientId(patientId);
+		
+		//Then
+		verify(dao).getTasksByPatientId(patientId);
+		assertThat(foundTasks.size(), is(1));
+		assertThat(foundTasks.get(0).getDescription(), is("Task 1"));
 	}
 }

@@ -13,8 +13,10 @@ import org.openmrs.annotation.Authorized;
 import org.openmrs.api.APIException;
 import org.openmrs.api.OpenmrsService;
 import org.openmrs.module.tasks.TasksConfig;
-import org.openmrs.module.tasks.Item;
+import org.openmrs.module.tasks.Task;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * The main service of this module, which is exposed for other modules. See
@@ -23,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public interface TasksService extends OpenmrsService {
 	
 	/**
-	 * Returns an item by uuid. It can be called by any authenticated user. It is fetched in read
+	 * Returns a task by uuid. It can be called by any authenticated user. It is fetched in read
 	 * only transaction.
 	 * 
 	 * @param uuid
@@ -32,17 +34,28 @@ public interface TasksService extends OpenmrsService {
 	 */
 	@Authorized()
 	@Transactional(readOnly = true)
-	Item getItemByUuid(String uuid) throws APIException;
+	Task getTaskByUuid(String uuid) throws APIException;
 	
 	/**
-	 * Saves an item. Sets the owner to superuser, if it is not set. It can be called by users with
-	 * this module's privilege. It is executed in a transaction.
+	 * Saves a task. It can be called by users with this module's privilege. It is executed in a transaction.
 	 * 
-	 * @param item
+	 * @param task
 	 * @return
 	 * @throws APIException
 	 */
 	@Authorized(TasksConfig.MODULE_PRIVILEGE)
 	@Transactional
-	Item saveItem(Item item) throws APIException;
+	Task saveTask(Task task) throws APIException;
+	
+	/**
+	 * Returns all tasks for a patient. It can be called by any authenticated user. It is fetched in read
+	 * only transaction.
+	 * 
+	 * @param patientId
+	 * @return
+	 * @throws APIException
+	 */
+	@Authorized()
+	@Transactional(readOnly = true)
+	List<Task> getTasksByPatientId(Integer patientId) throws APIException;
 }

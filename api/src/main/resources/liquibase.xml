@@ -35,5 +35,48 @@
         <addForeignKeyConstraint constraintName="tasks_item_owner_fk" baseTableName="tasks_item" baseColumnNames="owner"  referencedTableName="users"
                                  referencedColumnNames="user_id" />
     </changeSet> -->
- 
+
+	<changeSet id="tasks-2025-01-15-12-00" author="developer">
+		<preConditions onFail="MARK_RAN">
+			<not><tableExists tableName="tasks_task"/></not>
+		</preConditions>
+		<comment>
+			Creating the tasks_task table
+		</comment>
+		<createTable tableName="tasks_task">
+			<column name="tasks_task_id" type="int" autoIncrement="true">
+				<constraints primaryKey="true" nullable="false"/>
+			</column>
+			<column name="uuid" type="char(38)">
+				<constraints nullable="false" unique="true"/>
+			</column>
+			<column name="patient_id" type="int">
+				<constraints nullable="false"/>
+			</column>
+			<column name="description" type="text"/>
+			<column name="assignee" type="int"/>
+			<column name="status" type="varchar(50)"/>
+			<column name="kind" type="varchar(50)"/>
+			<column name="creator" type="int">
+				<constraints nullable="false"/>
+			</column>
+			<column name="date_created" type="datetime">
+				<constraints nullable="false"/>
+			</column>
+			<column name="changed_by" type="int"/>
+			<column name="date_changed" type="datetime"/>
+			<column name="voided" type="boolean" defaultValueBoolean="false">
+				<constraints nullable="false"/>
+			</column>
+			<column name="voided_by" type="int"/>
+			<column name="date_voided" type="datetime"/>
+			<column name="void_reason" type="varchar(255)"/>
+		</createTable>
+		<addForeignKeyConstraint constraintName="tasks_task_patient_fk" baseTableName="tasks_task" baseColumnNames="patient_id" referencedTableName="patient" referencedColumnNames="patient_id"/>
+		<addForeignKeyConstraint constraintName="tasks_task_assignee_fk" baseTableName="tasks_task" baseColumnNames="assignee" referencedTableName="users" referencedColumnNames="user_id"/>
+		<addForeignKeyConstraint constraintName="tasks_task_creator_fk" baseTableName="tasks_task" baseColumnNames="creator" referencedTableName="users" referencedColumnNames="user_id"/>
+		<addForeignKeyConstraint constraintName="tasks_task_changed_by_fk" baseTableName="tasks_task" baseColumnNames="changed_by" referencedTableName="users" referencedColumnNames="user_id"/>
+		<addForeignKeyConstraint constraintName="tasks_task_voided_by_fk" baseTableName="tasks_task" baseColumnNames="voided_by" referencedTableName="users" referencedColumnNames="user_id"/>
+	</changeSet>
+
 </databaseChangeLog>

@@ -12,9 +12,11 @@ package org.openmrs.module.tasks.api.dao;
 import org.hibernate.criterion.Restrictions;
 import org.openmrs.api.db.hibernate.DbSession;
 import org.openmrs.api.db.hibernate.DbSessionFactory;
-import org.openmrs.module.tasks.Item;
+import org.openmrs.module.tasks.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository("tasks.TasksDao")
 public class TasksDao {
@@ -26,12 +28,20 @@ public class TasksDao {
 		return sessionFactory.getCurrentSession();
 	}
 	
-	public Item getItemByUuid(String uuid) {
-		return (Item) getSession().createCriteria(Item.class).add(Restrictions.eq("uuid", uuid)).uniqueResult();
+	public Task getTaskByUuid(String uuid) {
+		return (Task) getSession().createCriteria(Task.class).add(Restrictions.eq("uuid", uuid)).uniqueResult();
 	}
 	
-	public Item saveItem(Item item) {
-		getSession().saveOrUpdate(item);
-		return item;
+	public Task saveTask(Task task) {
+		getSession().saveOrUpdate(task);
+		return task;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public List<Task> getTasksByPatientId(Integer patientId) {
+		return getSession().createCriteria(Task.class)
+				.add(Restrictions.eq("patient.id", patientId))
+				.add(Restrictions.eq("voided", false))
+				.list();
 	}
 }
