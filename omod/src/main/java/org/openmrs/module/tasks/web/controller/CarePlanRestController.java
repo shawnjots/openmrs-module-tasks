@@ -36,9 +36,10 @@ import java.util.List;
 
 /**
  * REST controller for FHIR v4 CarePlan endpoints. Each task corresponds to a CarePlan with one
- * activity.
+ * activity. Note: This controller is explicitly defined as a bean in
+ * webModuleApplicationContext.xml. The @Controller annotation is not needed (and would cause
+ * ambiguous mapping conflicts).
  */
-@org.springframework.stereotype.Controller
 @RequestMapping("/fhir/CarePlan")
 public class CarePlanRestController {
 	

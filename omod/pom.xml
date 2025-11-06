@@ -18,11 +18,17 @@
             <artifactId>tasks-api</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>
+		<!-- Use fhir2-api instead of bundling HAPI FHIR directly - this avoids classloader conflicts -->
+		<dependency>
+			<groupId>org.openmrs.module</groupId>
+			<artifactId>fhir2-api</artifactId>
+			<scope>provided</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.openmrs.web</groupId>
 			<artifactId>openmrs-web</artifactId>
 			<version>${openmrsPlatformVersion}</version>
-            <scope>compile</scope>
+            <scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.openmrs.web</groupId>
@@ -30,11 +36,6 @@
 			<version>${openmrsPlatformVersion}</version>
 			<scope>provided</scope>
 			<classifier>tests</classifier>
-		</dependency>
-		<dependency>
-			<groupId>ca.uhn.hapi.fhir</groupId>
-			<artifactId>hapi-fhir-structures-r4</artifactId>
-			<version>6.8.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>

@@ -124,10 +124,17 @@
 
     <properties>
         <openmrsPlatformVersion>2.7.0</openmrsPlatformVersion>
+        <fhir2Version>2.5.0</fhir2Version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.openmrs.api</groupId>
+                <artifactId>openmrs-api</artifactId>
+                <version>${openmrsPlatformVersion}</version>
+                <scope>provided</scope>
+            </dependency>
             <!-- Force Mockito version to avoid conflicts with old versions from OpenMRS dependencies -->
             <dependency>
                 <groupId>org.mockito</groupId>
@@ -138,6 +145,13 @@
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-inline</artifactId>
                 <version>3.12.4</version>
+            </dependency>
+            <!-- fhir2-api dependency management - use fhir2-api instead of bundling HAPI FHIR directly -->
+            <dependency>
+                <groupId>org.openmrs.module</groupId>
+                <artifactId>fhir2-api</artifactId>
+                <version>${fhir2Version}</version>
+                <scope>provided</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

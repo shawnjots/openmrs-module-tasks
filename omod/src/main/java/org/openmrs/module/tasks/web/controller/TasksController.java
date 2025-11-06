@@ -18,7 +18,6 @@ import org.apache.commons.logging.LogFactory;
 import org.openmrs.User;
 import org.openmrs.api.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,10 +25,11 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 /**
  * This class configured as controller using annotation and mapped with the URL of
- * 'module/${rootArtifactid}/${rootArtifactid}Link.form'.
+ * 'module/tasks/tasks.form'. Note: This controller is explicitly defined as a bean in
+ * webModuleApplicationContext.xml. The @Controller annotation is not needed (and would cause
+ * ambiguous mapping conflicts).
  */
-@Controller("${rootrootArtifactid}.TasksController")
-@RequestMapping(value = "module/${rootArtifactid}/${rootArtifactid}.form")
+@RequestMapping(value = "module/tasks/tasks.form")
 public class TasksController {
 	
 	/** Logger for this class and subclasses */
@@ -39,7 +39,7 @@ public class TasksController {
 	UserService userService;
 	
 	/** Success form view name */
-	private final String VIEW = "/module/${rootArtifactid}/${rootArtifactid}";
+	private final String VIEW = "/module/tasks/tasks";
 	
 	/**
 	 * Initially called after the getUsers method to get the landing form name

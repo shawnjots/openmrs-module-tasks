@@ -53,4 +53,11 @@
             </list>
         </property>
     </bean>
+
+    <!-- FHIR Resource Provider for CarePlan - integrates with fhir2 module -->
+    <bean id="tasks.CarePlanFhirResourceProvider" class="org.openmrs.module.tasks.api.fhir.CarePlanFhirResourceProvider">
+        <property name="tasksService" ref="tasks.TasksService" />
+        <property name="patientService" ref="patientService" />
+        <property name="userService" ref="userService" />
+    </bean>
 </beans>

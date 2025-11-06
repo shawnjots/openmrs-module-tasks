@@ -14,9 +14,13 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>ca.uhn.hapi.fhir</groupId>
-			<artifactId>hapi-fhir-structures-r4</artifactId>
-			<version>6.8.0</version>
+			<groupId>org.openmrs.api</groupId>
+			<artifactId>openmrs-api</artifactId>
+		</dependency>
+		<!-- Use fhir2-api instead of bundling HAPI FHIR directly - this avoids classloader conflicts -->
+		<dependency>
+			<groupId>org.openmrs.module</groupId>
+			<artifactId>fhir2-api</artifactId>
 		</dependency>
 		<!-- Test dependencies -->
 		<dependency>
