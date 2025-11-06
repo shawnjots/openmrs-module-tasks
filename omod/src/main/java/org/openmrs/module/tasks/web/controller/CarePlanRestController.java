@@ -95,8 +95,8 @@ public class CarePlanRestController {
 					Reference performerRef = activity.getDetail().getPerformer().get(0);
 					if (performerRef.hasReference()) {
 						String userRef = performerRef.getReference();
-						if (userRef.startsWith("Practitioner/")) {
-							String userId = userRef.substring("Practitioner/".length());
+						if (userRef.startsWith("Provider/")) {
+							String userId = userRef.substring("Provider/".length());
 							assignee = userService.getUser(Integer.parseInt(userId));
 							// Note: assignee can be null if not found
 						}

@@ -71,7 +71,7 @@ public class CarePlanMapper {
 		
 		if (task.getAssignee() != null) {
 			Reference performerRef = new Reference();
-			performerRef.setReference("Practitioner/" + task.getAssignee().getId());
+			performerRef.setReference("Provider/" + task.getAssignee().getId());
 			detail.addPerformer(performerRef);
 		}
 		
