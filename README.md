@@ -5,7 +5,56 @@ Description
 -----------
 This module provides a FHIR v4 backend exposing the CarePlan endpoint. It was developed in tandem with the Task List feature in O3.
 
+FHIR API Endpoints
+------------------
+This module exposes FHIR v4 CarePlan endpoints in two ways:
 
+### Via FHIR2 Module Integration
+The module integrates with the OpenMRS FHIR2 module to expose standard FHIR endpoints at `/ws/fhir2/R4/CarePlan`:
+
+**Create CarePlan**
+- **Endpoint:** `POST /ws/fhir2/R4/CarePlan`
+- **Content-Type:** `application/json` or `application/fhir+json`
+- **Description:** Creates a new CarePlan resource. Each CarePlan corresponds to a Task entity.
+- **Request Body:** FHIR CarePlan resource in JSON format
+- **Response:** Returns the created CarePlan with its ID
+- **Required Fields:**
+  - `subject`: Patient reference in format `Patient/{patientId}`
+- **Optional Fields:**
+  - `activity[0].detail.performer[0]`: Provider reference in format `Provider/{userId}` for task assignment
+
+**Read CarePlan by ID**
+- **Endpoint:** `GET /ws/fhir2/R4/CarePlan/{id}`
+- **Description:** Retrieves a CarePlan resource by its UUID
+- **Response:** Returns the CarePlan resource if found, or 404 if not found
+
+**Search CarePlans by Patient**
+- **Endpoint:** `GET /ws/fhir2/R4/CarePlan?subject=Patient/{patientId}`
+- **Description:** Searches for all CarePlans associated with a specific patient
+- **Query Parameters:**
+  - `subject`: Patient reference in format `Patient/{patientId}` or just `{patientId}`
+- **Response:** Returns a list of CarePlan resources matching the search criteria
+
+### Via Direct REST Controller
+The module also exposes endpoints directly at `/fhir/CarePlan`:
+
+**Create CarePlan**
+- **Endpoint:** `POST /fhir/CarePlan`
+- **Content-Type:** `application/json`
+- **Description:** Creates a new CarePlan resource
+- **Request Body:** FHIR CarePlan resource in JSON format
+- **Response:** Returns the created CarePlan as JSON with HTTP 201 (Created)
+- **Error Response:** Returns FHIR OperationOutcome in JSON format on error
+
+**Get CarePlans by Patient**
+- **Endpoint:** `GET /fhir/CarePlan?subject=Patient/{patientId}`
+- **Description:** Retrieves all CarePlans for a specific patient
+- **Query Parameters:**
+  - `subject` (required): Patient reference in format `Patient/{patientId}`
+- **Response:** Returns a FHIR Bundle containing CarePlan resources
+- **Error Response:** Returns FHIR OperationOutcome in JSON format on error
+
+**Note:** All endpoints require authentication as per OpenMRS security configuration. The base URL for endpoints is relative to your OpenMRS server installation (e.g., `http://localhost:8080/openmrs`).
 
 Building from Source
 --------------------

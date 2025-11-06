@@ -73,7 +73,7 @@ public class CarePlanFhirResourceProvider implements IResourceProvider {
 			String patientRef = carePlan.getSubject().getReference();
 			if (patientRef.startsWith("Patient/")) {
 				String patientId = patientRef.substring("Patient/".length());
-				patient = patientService.getPatient(Integer.parseInt(patientId));
+				patient = patientService.getPatientByUuid(patientId);
 			}
 		}
 		
@@ -146,19 +146,16 @@ public class CarePlanFhirResourceProvider implements IResourceProvider {
 				patientIdStr = patientIdStr.substring("Patient/".length());
 			}
 			
-			try {
-				Integer patientId = Integer.parseInt(patientIdStr);
-				
-				// Get tasks for patient
-				List<Task> tasks = tasksService.getTasksByPatientId(patientId);
+			Patient patient = patientService.getPatientByUuid(patientIdStr);
+			
+			if (patient != null) {
+				// Get tasks for patient using patient ID
+				List<Task> tasks = tasksService.getTasksByPatientId(patient.getPatientId());
 				
 				// Convert to CarePlans
 				for (Task task : tasks) {
 					carePlans.add(carePlanMapper.toCarePlan(task));
 				}
-			}
-			catch (NumberFormatException e) {
-				// Invalid patient ID format, return empty list
 			}
 		}
 		

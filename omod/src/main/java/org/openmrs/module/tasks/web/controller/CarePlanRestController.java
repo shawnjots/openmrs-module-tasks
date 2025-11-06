@@ -75,7 +75,7 @@ public class CarePlanRestController {
 				String patientRef = carePlan.getSubject().getReference();
 				if (patientRef.startsWith("Patient/")) {
 					String patientId = patientRef.substring("Patient/".length());
-					patient = patientService.getPatient(Integer.parseInt(patientId));
+					patient = patientService.getPatientByUuid(patientId);
 					if (patient == null) {
 						return createErrorResponse("Patient not found: " + patientId, HttpStatus.NOT_FOUND);
 					}
@@ -139,16 +139,14 @@ public class CarePlanRestController {
 			}
 			
 			String patientIdStr = subject.substring("Patient/".length());
-			Integer patientId = Integer.parseInt(patientIdStr);
 			
-			// Verify patient exists
-			Patient patient = patientService.getPatient(patientId);
+			Patient patient = patientService.getPatientByUuid(patientIdStr);
 			if (patient == null) {
-				return createErrorResponse("Patient not found: " + patientId, HttpStatus.NOT_FOUND);
+				return createErrorResponse("Patient not found: " + patientIdStr, HttpStatus.NOT_FOUND);
 			}
 			
-			// Get tasks for patient
-			List<Task> tasks = tasksService.getTasksByPatientId(patientId);
+			// Get tasks for patient using patient ID
+			List<Task> tasks = tasksService.getTasksByPatientId(patient.getPatientId());
 			
 			// Convert to CarePlans and create Bundle
 			Bundle bundle = new Bundle();
@@ -168,9 +166,6 @@ public class CarePlanRestController {
 			String responseJson = parser.encodeResourceToString(bundle);
 			return new ResponseEntity<String>(responseJson, HttpStatus.OK);
 			
-		}
-		catch (NumberFormatException e) {
-			return createErrorResponse("Invalid patient ID format", HttpStatus.BAD_REQUEST);
 		}
 		catch (Exception e) {
 			return createErrorResponse("Error retrieving CarePlans: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
