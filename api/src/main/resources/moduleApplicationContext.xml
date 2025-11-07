@@ -58,6 +58,6 @@
     <bean id="tasks.CarePlanFhirResourceProvider" class="org.openmrs.module.tasks.api.fhir.CarePlanFhirResourceProvider">
         <property name="tasksService" ref="tasks.TasksService" />
         <property name="patientService" ref="patientService" />
-        <property name="userService" ref="userService" />
+        <property name="providerService" ref="providerService" />
     </bean>
 </beans>

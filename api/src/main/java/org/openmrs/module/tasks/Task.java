@@ -12,9 +12,8 @@ package org.openmrs.module.tasks;
 import org.hl7.fhir.r4.model.CarePlan;
 import org.openmrs.BaseOpenmrsData;
 import org.openmrs.Patient;
-import org.openmrs.User;
+import org.openmrs.Provider;
 
-import javax.persistence.Basic;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -41,20 +40,17 @@ public class Task extends BaseOpenmrsData {
 	@JoinColumn(name = "patient_id", nullable = false)
 	private Patient patient;
 	
-	@Basic
 	@Column(name = "description", length = 1000)
 	private String description;
 	
 	@ManyToOne
-	@JoinColumn(name = "assignee")
-	private User assignee;
+	@JoinColumn(name = "provider_id")
+	private Provider assignee;
 	
-	@Basic
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", length = 50)
 	private CarePlan.CarePlanActivityStatus status;
 	
-	@Basic
 	@Enumerated(EnumType.STRING)
 	@Column(name = "kind", length = 50)
 	private CarePlan.CarePlanActivityKind kind;
@@ -95,11 +91,11 @@ public class Task extends BaseOpenmrsData {
 		this.description = description;
 	}
 	
-	public User getAssignee() {
+	public Provider getAssignee() {
 		return assignee;
 	}
 	
-	public void setAssignee(User assignee) {
+	public void setAssignee(Provider assignee) {
 		this.assignee = assignee;
 	}
 	

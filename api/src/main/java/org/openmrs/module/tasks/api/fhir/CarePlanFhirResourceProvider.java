@@ -20,9 +20,9 @@ import org.hl7.fhir.r4.model.CarePlan;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Reference;
 import org.openmrs.Patient;
-import org.openmrs.User;
+import org.openmrs.Provider;
 import org.openmrs.api.PatientService;
-import org.openmrs.api.UserService;
+import org.openmrs.api.ProviderService;
 import org.openmrs.module.fhir2.api.annotations.R4Provider;
 import org.openmrs.module.tasks.Task;
 import org.openmrs.module.tasks.api.TasksService;
@@ -41,17 +41,18 @@ public class CarePlanFhirResourceProvider implements IResourceProvider {
 	
 	private PatientService patientService;
 	
-	private UserService userService;
+	private ProviderService providerService;
 	
 	private CarePlanMapper carePlanMapper = new CarePlanMapper();
 	
 	public CarePlanFhirResourceProvider() {
 	}
 	
-	public CarePlanFhirResourceProvider(TasksService tasksService, PatientService patientService, UserService userService) {
+	public CarePlanFhirResourceProvider(TasksService tasksService, PatientService patientService,
+	    ProviderService providerService) {
 		this.tasksService = tasksService;
 		this.patientService = patientService;
-		this.userService = userService;
+		this.providerService = providerService;
 	}
 	
 	@Override
@@ -82,7 +83,7 @@ public class CarePlanFhirResourceProvider implements IResourceProvider {
 		}
 		
 		// Resolve assignee (performer) reference if present
-		User assignee = null;
+		Provider assignee = null;
 		if (carePlan.hasActivity() && !carePlan.getActivity().isEmpty()) {
 			CarePlan.CarePlanActivityComponent activity = carePlan.getActivity().get(0);
 			if (activity.hasDetail() && activity.getDetail().hasPerformer()
@@ -91,8 +92,13 @@ public class CarePlanFhirResourceProvider implements IResourceProvider {
 				if (performerRef.hasReference()) {
 					String userRef = performerRef.getReference();
 					if (userRef.startsWith("Provider/")) {
-						String userId = userRef.substring("Provider/".length());
-						assignee = userService.getUser(Integer.parseInt(userId));
+						String providerId = userRef.substring("Provider/".length());
+						try {
+							assignee = providerService.getProvider(Integer.parseInt(providerId));
+						}
+						catch (NumberFormatException ignored) {
+							assignee = providerService.getProviderByUuid(providerId);
+						}
 					}
 				}
 			}
@@ -170,7 +176,7 @@ public class CarePlanFhirResourceProvider implements IResourceProvider {
 		this.patientService = patientService;
 	}
 	
-	public void setUserService(UserService userService) {
-		this.userService = userService;
+	public void setProviderService(ProviderService providerService) {
+		this.providerService = providerService;
 	}
 }

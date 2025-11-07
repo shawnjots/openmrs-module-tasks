@@ -16,9 +16,9 @@ import org.hl7.fhir.r4.model.CarePlan;
 import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Reference;
 import org.openmrs.Patient;
-import org.openmrs.User;
+import org.openmrs.Provider;
 import org.openmrs.api.PatientService;
-import org.openmrs.api.UserService;
+import org.openmrs.api.ProviderService;
 import org.openmrs.module.tasks.Task;
 import org.openmrs.module.tasks.api.TasksService;
 import org.openmrs.module.tasks.api.fhir.CarePlanMapper;
@@ -54,7 +54,7 @@ public class CarePlanRestController {
 	private PatientService patientService;
 	
 	@Autowired
-	private UserService userService;
+	private ProviderService providerService;
 	
 	/**
 	 * Creates a CarePlan from the provided FHIR CarePlan JSON.
@@ -87,7 +87,7 @@ public class CarePlanRestController {
 			}
 			
 			// Resolve assignee (performer) reference if present
-			User assignee = null;
+			Provider assignee = null;
 			if (carePlan.hasActivity() && !carePlan.getActivity().isEmpty()) {
 				CarePlan.CarePlanActivityComponent activity = carePlan.getActivity().get(0);
 				if (activity.hasDetail() && activity.getDetail().hasPerformer()
@@ -96,8 +96,13 @@ public class CarePlanRestController {
 					if (performerRef.hasReference()) {
 						String userRef = performerRef.getReference();
 						if (userRef.startsWith("Provider/")) {
-							String userId = userRef.substring("Provider/".length());
-							assignee = userService.getUser(Integer.parseInt(userId));
+							String providerId = userRef.substring("Provider/".length());
+							try {
+								assignee = providerService.getProvider(Integer.parseInt(providerId));
+							}
+							catch (NumberFormatException ignored) {
+								assignee = providerService.getProviderByUuid(providerId);
+							}
 							// Note: assignee can be null if not found
 						}
 					}

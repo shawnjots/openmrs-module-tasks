@@ -54,7 +54,7 @@
 				<constraints nullable="false"/>
 			</column>
 			<column name="description" type="text"/>
-			<column name="assignee" type="int"/>
+			<column name="provider_id" type="int"/>
 			<column name="status" type="varchar(50)"/>
 			<column name="kind" type="varchar(50)"/>
 			<column name="creator" type="int">
@@ -73,10 +73,22 @@
 			<column name="void_reason" type="varchar(255)"/>
 		</createTable>
 		<addForeignKeyConstraint constraintName="tasks_task_patient_fk" baseTableName="tasks_task" baseColumnNames="patient_id" referencedTableName="patient" referencedColumnNames="patient_id"/>
-		<addForeignKeyConstraint constraintName="tasks_task_assignee_fk" baseTableName="tasks_task" baseColumnNames="assignee" referencedTableName="users" referencedColumnNames="user_id"/>
+		<addForeignKeyConstraint constraintName="tasks_task_provider_fk" baseTableName="tasks_task" baseColumnNames="provider_id" referencedTableName="provider" referencedColumnNames="provider_id"/>
 		<addForeignKeyConstraint constraintName="tasks_task_creator_fk" baseTableName="tasks_task" baseColumnNames="creator" referencedTableName="users" referencedColumnNames="user_id"/>
 		<addForeignKeyConstraint constraintName="tasks_task_changed_by_fk" baseTableName="tasks_task" baseColumnNames="changed_by" referencedTableName="users" referencedColumnNames="user_id"/>
 		<addForeignKeyConstraint constraintName="tasks_task_voided_by_fk" baseTableName="tasks_task" baseColumnNames="voided_by" referencedTableName="users" referencedColumnNames="user_id"/>
+	</changeSet>
+
+	<changeSet id="tasks-2025-11-07-rename-assignee" author="assistant">
+		<preConditions onFail="MARK_RAN">
+			<and>
+				<tableExists tableName="tasks_task"/>
+				<columnExists tableName="tasks_task" columnName="assignee"/>
+			</and>
+		</preConditions>
+		<dropForeignKeyConstraint baseTableName="tasks_task" constraintName="tasks_task_assignee_fk"/>
+		<renameColumn tableName="tasks_task" oldColumnName="assignee" newColumnName="provider_id" columnDataType="int"/>
+		<addForeignKeyConstraint constraintName="tasks_task_provider_fk" baseTableName="tasks_task" baseColumnNames="provider_id" referencedTableName="provider" referencedColumnNames="provider_id"/>
 	</changeSet>
 
 </databaseChangeLog>

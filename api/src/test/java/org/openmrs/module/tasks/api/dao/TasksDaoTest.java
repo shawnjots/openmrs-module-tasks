@@ -13,7 +13,7 @@ import org.hl7.fhir.r4.model.CarePlan;
 import org.junit.Test;
 import org.openmrs.Patient;
 import org.openmrs.api.PatientService;
-import org.openmrs.api.UserService;
+import org.openmrs.api.ProviderService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.tasks.Task;
 import org.openmrs.test.BaseModuleContextSensitiveTest;
@@ -38,7 +38,7 @@ public class TasksDaoTest extends BaseModuleContextSensitiveTest {
 	PatientService patientService;
 	
 	@Autowired
-	UserService userService;
+	ProviderService providerService;
 	
 	@Test
 	public void saveTask_shouldSaveAllPropertiesInDb() {
@@ -49,7 +49,7 @@ public class TasksDaoTest extends BaseModuleContextSensitiveTest {
 		task.setKind(CarePlan.CarePlanActivityKind.APPOINTMENT);
 		Patient patient = patientService.getPatient(2);
 		task.setPatient(patient);
-		task.setAssignee(userService.getUser(1));
+		task.setAssignee(providerService.getProvider(1));
 		
 		//When
 		dao.saveTask(task);

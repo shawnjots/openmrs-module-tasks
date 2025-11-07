@@ -7,14 +7,16 @@
 <br/>
 <table>
   <tr>
-   <th>User Id</th>
-   <th>Username</th>
+   <th>Provider Id</th>
+   <th>Identifier</th>
+   <th>Name</th>
   </tr>
-  <c:forEach var="user" items="${users}">
+  <c:forEach var="provider" items="${providers}">
       <tr>
-        <td>${user.userId}</td>
-        <td>${user.systemId}</td>
-      </tr>		
+        <td>${provider.providerId}</td>
+        <td>${provider.identifier}</td>
+        <td>${provider.person.personName.fullName}</td>
+      </tr>
   </c:forEach>
 </table>
 

@@ -12,14 +12,11 @@ package org.openmrs.module.tasks;
 import org.openmrs.BaseOpenmrsData;
 import org.openmrs.User;
 
-import javax.persistence.Basic;
 import javax.persistence.Column;
-import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
-import javax.persistence.Table;
 
 /**
  * Please note that a corresponding table schema must be created in liquibase.xml.
@@ -38,7 +35,6 @@ public class Item extends BaseOpenmrsData {
 	@JoinColumn(name = "owner")
 	private User owner;
 	
-	@Basic
 	@Column(name = "description", length = 255)
 	private String description;
 	

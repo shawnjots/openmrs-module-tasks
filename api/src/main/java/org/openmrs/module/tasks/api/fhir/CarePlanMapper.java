@@ -12,7 +12,7 @@ package org.openmrs.module.tasks.api.fhir;
 import org.hl7.fhir.r4.model.CarePlan;
 import org.hl7.fhir.r4.model.Reference;
 import org.openmrs.Patient;
-import org.openmrs.User;
+import org.openmrs.Provider;
 import org.openmrs.module.tasks.Task;
 
 /**
@@ -77,10 +77,10 @@ public class CarePlanMapper {
 	 * 
 	 * @param carePlan the FHIR CarePlan resource
 	 * @param patient the Patient entity (must be resolved separately)
-	 * @param assignee the User entity for assignee (must be resolved separately, can be null)
+	 * @param assignee the Provider entity for assignee (must be resolved separately, can be null)
 	 * @return the Task entity
 	 */
-	public Task toTask(CarePlan carePlan, Patient patient, User assignee) {
+	public Task toTask(CarePlan carePlan, Patient patient, Provider assignee) {
 		Task task = new Task();
 		
 		if (carePlan.hasId()) {
