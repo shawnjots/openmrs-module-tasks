@@ -17,5 +17,15 @@ import org.springframework.stereotype.Component;
 @Component("tasks.TasksConfig")
 public class TasksConfig {
 	
-	public final static String MODULE_PRIVILEGE = "Tasks Privilege";
+	public static final String TASKS_VIEW_PRIVILEGE = "View Tasks";
+	
+	public static final String TASKS_MANAGE_PRIVILEGE = "Manage Tasks";
+	
+	public static final String TASKS_DELETE_PRIVILEGE = "Delete Tasks";
+	
+	/**
+	 * @deprecated use {@link #TASKS_MANAGE_PRIVILEGE} instead.
+	 */
+	@Deprecated
+	public static final String MODULE_PRIVILEGE = TASKS_MANAGE_PRIVILEGE;
 }

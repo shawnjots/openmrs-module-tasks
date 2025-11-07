@@ -16,6 +16,7 @@ import org.openmrs.module.tasks.api.TasksService;
 import org.openmrs.module.tasks.api.dao.TasksDao;
 
 import java.util.List;
+import java.util.Date;
 
 public class TasksServiceImpl extends BaseOpenmrsService implements TasksService {
 	
@@ -41,5 +42,32 @@ public class TasksServiceImpl extends BaseOpenmrsService implements TasksService
 	@Override
 	public List<Task> getTasksByPatientId(Integer patientId) throws APIException {
 		return dao.getTasksByPatientId(patientId);
+	}
+	
+	@Override
+	public void voidTask(Task task, String voidReason) throws APIException {
+		if (task == null) {
+			throw new APIException("Task cannot be null");
+		}
+		if (Boolean.TRUE.equals(task.getVoided())) {
+			return;
+		}
+		if (voidReason == null || voidReason.trim().isEmpty()) {
+			throw new APIException("Void reason is required");
+		}
+		task.setVoided(true);
+		task.setVoidReason(voidReason);
+		if (task.getDateVoided() == null) {
+			task.setDateVoided(new Date());
+		}
+		dao.saveTask(task);
+	}
+	
+	@Override
+	public void purgeTask(Task task) throws APIException {
+		if (task == null) {
+			throw new APIException("Task cannot be null");
+		}
+		dao.deleteTask(task);
 	}
 }

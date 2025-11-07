@@ -91,4 +91,40 @@
 		<addForeignKeyConstraint constraintName="tasks_task_provider_fk" baseTableName="tasks_task" baseColumnNames="provider_id" referencedTableName="provider" referencedColumnNames="provider_id"/>
 	</changeSet>
 
+	<changeSet id="tasks-2025-11-07-privilege-view" author="assistant">
+		<preConditions onFail="MARK_RAN">
+			<sqlCheck expectedResult="0">
+				SELECT COUNT(*) FROM privilege WHERE privilege = 'View Tasks'
+			</sqlCheck>
+		</preConditions>
+		<insert tableName="privilege">
+			<column name="privilege" value="View Tasks"/>
+			<column name="description" value="Allows viewing tasks and task-related FHIR CarePlans"/>
+		</insert>
+	</changeSet>
+
+	<changeSet id="tasks-2025-11-07-privilege-manage" author="assistant">
+		<preConditions onFail="MARK_RAN">
+			<sqlCheck expectedResult="0">
+				SELECT COUNT(*) FROM privilege WHERE privilege = 'Manage Tasks'
+			</sqlCheck>
+		</preConditions>
+		<insert tableName="privilege">
+			<column name="privilege" value="Manage Tasks"/>
+			<column name="description" value="Allows creating and updating tasks"/>
+		</insert>
+	</changeSet>
+
+	<changeSet id="tasks-2025-11-07-privilege-delete" author="assistant">
+		<preConditions onFail="MARK_RAN">
+			<sqlCheck expectedResult="0">
+				SELECT COUNT(*) FROM privilege WHERE privilege = 'Delete Tasks'
+			</sqlCheck>
+		</preConditions>
+		<insert tableName="privilege">
+			<column name="privilege" value="Delete Tasks"/>
+			<column name="description" value="Allows voiding and purging tasks"/>
+		</insert>
+	</changeSet>
+
 </databaseChangeLog>

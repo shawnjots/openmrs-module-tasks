@@ -37,6 +37,10 @@ public class TasksDao {
 		return task;
 	}
 	
+	public void deleteTask(Task task) {
+		getSession().delete(task);
+	}
+	
 	@SuppressWarnings("unchecked")
 	public List<Task> getTasksByPatientId(Integer patientId) {
 		return getSession().createCriteria(Task.class).add(Restrictions.eq("patient.id", patientId))

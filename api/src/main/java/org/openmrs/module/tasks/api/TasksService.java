@@ -32,7 +32,7 @@ public interface TasksService extends OpenmrsService {
 	 * @return
 	 * @throws APIException
 	 */
-	@Authorized()
+	@Authorized(TasksConfig.TASKS_VIEW_PRIVILEGE)
 	@Transactional(readOnly = true)
 	Task getTaskByUuid(String uuid) throws APIException;
 	
@@ -44,7 +44,7 @@ public interface TasksService extends OpenmrsService {
 	 * @return
 	 * @throws APIException
 	 */
-	@Authorized(TasksConfig.MODULE_PRIVILEGE)
+	@Authorized(TasksConfig.TASKS_MANAGE_PRIVILEGE)
 	@Transactional
 	Task saveTask(Task task) throws APIException;
 	
@@ -56,7 +56,28 @@ public interface TasksService extends OpenmrsService {
 	 * @return
 	 * @throws APIException
 	 */
-	@Authorized()
+	@Authorized(TasksConfig.TASKS_VIEW_PRIVILEGE)
 	@Transactional(readOnly = true)
 	List<Task> getTasksByPatientId(Integer patientId) throws APIException;
+	
+	/**
+	 * Voids a task with the provided reason.
+	 * 
+	 * @param task the task to void
+	 * @param voidReason the reason for voiding
+	 * @throws APIException
+	 */
+	@Authorized(TasksConfig.TASKS_DELETE_PRIVILEGE)
+	@Transactional
+	void voidTask(Task task, String voidReason) throws APIException;
+	
+	/**
+	 * Permanently deletes a task from the database.
+	 * 
+	 * @param task the task to purge
+	 * @throws APIException
+	 */
+	@Authorized(TasksConfig.TASKS_DELETE_PRIVILEGE)
+	@Transactional
+	void purgeTask(Task task) throws APIException;
 }

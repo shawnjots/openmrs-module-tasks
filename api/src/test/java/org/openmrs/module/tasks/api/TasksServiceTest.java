@@ -15,13 +15,12 @@ import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.openmrs.Patient;
 import org.openmrs.module.tasks.Task;
 import org.openmrs.module.tasks.api.dao.TasksDao;
 import org.openmrs.module.tasks.api.impl.TasksServiceImpl;
 import static org.mockito.Mockito.*;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +39,7 @@ public class TasksServiceTest {
 	
 	@Before
 	public void setupMocks() {
-		MockitoAnnotations.initMocks(this);
+		MockitoAnnotations.openMocks(this);
 	}
 	
 	@Test
@@ -96,5 +95,33 @@ public class TasksServiceTest {
 		verify(dao).getTasksByPatientId(patientId);
 		assertThat(foundTasks.size(), is(1));
 		assertThat(foundTasks.get(0).getDescription(), is("Task 1"));
+	}
+	
+	@Test
+	public void voidTask_shouldMarkTaskVoidedAndDelegateToDao() {
+		//Given
+		Task task = new Task();
+		when(dao.saveTask(task)).thenReturn(task);
+		String reason = "Test reason";
+		
+		//When
+		tasksService.voidTask(task, reason);
+		
+		//Then
+		assertThat(task.getVoided(), is(true));
+		assertThat(task.getVoidReason(), is(reason));
+		verify(dao).saveTask(task);
+	}
+	
+	@Test
+	public void purgeTask_shouldDelegateToDao() {
+		//Given
+		Task task = new Task();
+		
+		//When
+		tasksService.purgeTask(task);
+		
+		//Then
+		verify(dao).deleteTask(task);
 	}
 }
