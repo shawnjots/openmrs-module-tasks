@@ -24,6 +24,18 @@
 			<artifactId>fhir2-api</artifactId>
 			<scope>provided</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-web</artifactId>
+			<version>5.3.30</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webmvc</artifactId>
+			<version>5.3.30</version>
+			<scope>provided</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
