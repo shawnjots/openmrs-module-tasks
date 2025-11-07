@@ -47,6 +47,9 @@ public class Task extends BaseOpenmrsData {
 	@JoinColumn(name = "provider_id")
 	private Provider assignee;
 	
+	@Column(name = "assignee_role_uuid", length = 38)
+	private String assigneeRoleUuid;
+	
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", length = 50)
 	private CarePlan.CarePlanActivityStatus status;
@@ -97,6 +100,14 @@ public class Task extends BaseOpenmrsData {
 	
 	public void setAssignee(Provider assignee) {
 		this.assignee = assignee;
+	}
+	
+	public String getAssigneeRoleUuid() {
+		return assigneeRoleUuid;
+	}
+	
+	public void setAssigneeRoleUuid(String assigneeRoleUuid) {
+		this.assigneeRoleUuid = assigneeRoleUuid;
 	}
 	
 	public CarePlan.CarePlanActivityStatus getStatus() {

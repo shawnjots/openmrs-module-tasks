@@ -16,6 +16,8 @@ import ca.uhn.fhir.rest.annotation.ResourceParam;
 import ca.uhn.fhir.rest.annotation.Search;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.server.IResourceProvider;
+import org.apache.commons.lang3.StringUtils;
+import org.hl7.fhir.instance.model.api.IIdType;
 import org.hl7.fhir.r4.model.CarePlan;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Reference;
@@ -43,7 +45,7 @@ public class CarePlanFhirResourceProvider implements IResourceProvider {
 	
 	private ProviderService providerService;
 	
-	private CarePlanMapper carePlanMapper = new CarePlanMapper();
+	private CarePlanMapper carePlanMapper;
 	
 	public CarePlanFhirResourceProvider() {
 	}
@@ -53,6 +55,10 @@ public class CarePlanFhirResourceProvider implements IResourceProvider {
 		this.tasksService = tasksService;
 		this.patientService = patientService;
 		this.providerService = providerService;
+	}
+	
+	public void setCarePlanMapper(CarePlanMapper carePlanMapper) {
+		this.carePlanMapper = carePlanMapper;
 	}
 	
 	@Override
@@ -71,10 +77,12 @@ public class CarePlanFhirResourceProvider implements IResourceProvider {
 		// Resolve patient reference
 		Patient patient = null;
 		if (carePlan.hasSubject() && carePlan.getSubject().hasReference()) {
-			String patientRef = carePlan.getSubject().getReference();
-			if (patientRef.startsWith("Patient/")) {
-				String patientId = patientRef.substring("Patient/".length());
-				patient = patientService.getPatientByUuid(patientId);
+			IIdType subjectRef = carePlan.getSubject().getReferenceElement();
+			if (subjectRef != null && StringUtils.equalsIgnoreCase(subjectRef.getResourceType(), "Patient")) {
+				String patientUuid = subjectRef.getIdPart();
+				if (StringUtils.isNotBlank(patientUuid)) {
+					patient = patientService.getPatientByUuid(patientUuid);
+				}
 			}
 		}
 		
@@ -84,28 +92,28 @@ public class CarePlanFhirResourceProvider implements IResourceProvider {
 		
 		// Resolve assignee (performer) reference if present
 		Provider assignee = null;
+		String assigneeRoleUuid = null;
 		if (carePlan.hasActivity() && !carePlan.getActivity().isEmpty()) {
 			CarePlan.CarePlanActivityComponent activity = carePlan.getActivity().get(0);
 			if (activity.hasDetail() && activity.getDetail().hasPerformer()
 			        && !activity.getDetail().getPerformer().isEmpty()) {
 				Reference performerRef = activity.getDetail().getPerformer().get(0);
-				if (performerRef.hasReference()) {
-					String userRef = performerRef.getReference();
-					if (userRef.startsWith("Provider/")) {
-						String providerId = userRef.substring("Provider/".length());
-						try {
-							assignee = providerService.getProvider(Integer.parseInt(providerId));
+				IIdType performerId = performerRef.getReferenceElement();
+				if (performerId != null) {
+					if (StringUtils.equalsIgnoreCase(performerId.getResourceType(), "Practitioner")) {
+						String practitionerUuid = performerId.getIdPart();
+						if (StringUtils.isNotBlank(practitionerUuid)) {
+							assignee = providerService.getProviderByUuid(practitionerUuid);
 						}
-						catch (NumberFormatException ignored) {
-							assignee = providerService.getProviderByUuid(providerId);
-						}
+					} else if (StringUtils.equalsIgnoreCase(performerId.getResourceType(), "PractitionerRole")) {
+						assigneeRoleUuid = performerId.getIdPart();
 					}
 				}
 			}
 		}
 		
 		// Convert CarePlan to Task
-		Task task = carePlanMapper.toTask(carePlan, patient, assignee);
+		Task task = carePlanMapper.toTask(carePlan, patient, assignee, assigneeRoleUuid);
 		
 		// Save task
 		Task savedTask = tasksService.saveTask(task);

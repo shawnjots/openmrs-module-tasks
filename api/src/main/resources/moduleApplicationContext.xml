@@ -8,6 +8,7 @@
        xmlns:tx="http://www.springframework.org/schema/tx"
        xmlns:aop="http://www.springframework.org/schema/aop"
        xmlns:util="http://www.springframework.org/schema/util"
+       xmlns:context="http://www.springframework.org/schema/context"
        xsi:schemaLocation="http://www.springframework.org/schema/beans
   		    http://www.springframework.org/schema/beans/spring-beans.xsd
   		    http://www.springframework.org/schema/tx
@@ -15,7 +16,11 @@
   		    http://www.springframework.org/schema/aop
   		    http://www.springframework.org/schema/aop/spring-aop.xsd
   		    http://www.springframework.org/schema/util
-  		    http://www.springframework.org/schema/util/spring-util.xsd">
+  		    http://www.springframework.org/schema/util/spring-util.xsd
+  		    http://www.springframework.org/schema/context
+  		    http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <context:component-scan base-package="org.openmrs.module.tasks.api.fhir"/>
 
     <!-- DAO bean -->
     <bean id="tasks.TasksDao" class="org.openmrs.module.tasks.api.dao.TasksDao" autowire="byType" />
@@ -59,5 +64,6 @@
         <property name="tasksService" ref="tasks.TasksService" />
         <property name="patientService" ref="patientService" />
         <property name="providerService" ref="providerService" />
+        <property name="carePlanMapper" ref="tasks.CarePlanMapper" />
     </bean>
 </beans>

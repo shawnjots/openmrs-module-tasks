@@ -13,29 +13,6 @@
         for a list of supported elements and attributes
     -->
  
- 	<!-- Uncomment the changeset below if you want to make the Item class persistable, see also Item and TasksDaoTest -->
- 	<!--
-	<changeSet id="tasks-2016-08-02-12-21" author="raff">
-		<preConditions onFail="MARK_RAN">
-			<not><tableExists tableName="tasks_item"/></not>
-		</preConditions>
-		<comment>
-			Creating the tasks_item table
-		</comment>
-		<createTable tableName="tasks_item">
-			<column name="tasks_item_id" type="int" autoIncrement="true">
-				<constraints primaryKey="true" nullable="false"/>
-			</column>
-			<column name="uuid" type="char(38)">
-				<constraints nullable="false" unique="true"></constraints>
-			</column>
-			<column name="owner" type="int" />
-			<column name="description" type="varchar(255)" />
-		</createTable>
-        <addForeignKeyConstraint constraintName="tasks_item_owner_fk" baseTableName="tasks_item" baseColumnNames="owner"  referencedTableName="users"
-                                 referencedColumnNames="user_id" />
-    </changeSet> -->
-
 	<changeSet id="tasks-2025-01-15-12-00" author="developer">
 		<preConditions onFail="MARK_RAN">
 			<not><tableExists tableName="tasks_task"/></not>
@@ -125,6 +102,17 @@
 			<column name="privilege" value="Delete Tasks"/>
 			<column name="description" value="Allows voiding and purging tasks"/>
 		</insert>
+	</changeSet>
+
+	<changeSet id="tasks-2025-11-07-assignee-role-column" author="assistant">
+		<preConditions onFail="MARK_RAN">
+			<not>
+				<columnExists tableName="tasks_task" columnName="assignee_role_uuid"/>
+			</not>
+		</preConditions>
+		<addColumn tableName="tasks_task">
+			<column name="assignee_role_uuid" type="char(38)"/>
+		</addColumn>
 	</changeSet>
 
 </databaseChangeLog>

@@ -50,6 +50,7 @@ public class TasksDaoTest extends BaseModuleContextSensitiveTest {
 		Patient patient = patientService.getPatient(2);
 		task.setPatient(patient);
 		task.setAssignee(providerService.getProvider(1));
+		task.setAssigneeRoleUuid("role-uuid-1234");
 		
 		//When
 		dao.saveTask(task);
@@ -67,6 +68,7 @@ public class TasksDaoTest extends BaseModuleContextSensitiveTest {
 		assertThat(savedTask, hasProperty("status", is(task.getStatus())));
 		assertThat(savedTask, hasProperty("kind", is(task.getKind())));
 		assertThat(savedTask, hasProperty("assignee", is(task.getAssignee())));
+		assertThat(savedTask, hasProperty("assigneeRoleUuid", is(task.getAssigneeRoleUuid())));
 	}
 	
 	@Test
@@ -79,6 +81,7 @@ public class TasksDaoTest extends BaseModuleContextSensitiveTest {
 		task1.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
 		task1.setKind(CarePlan.CarePlanActivityKind.APPOINTMENT);
 		task1.setPatient(patient);
+		task1.setAssigneeRoleUuid("role-uuid-1");
 		dao.saveTask(task1);
 		
 		Task task2 = new Task();
@@ -97,5 +100,6 @@ public class TasksDaoTest extends BaseModuleContextSensitiveTest {
 		//Then
 		assertThat(tasks.size(), is(2));
 		assertThat(tasks, hasItems(hasProperty("description", is("Task 1")), hasProperty("description", is("Task 2"))));
+		assertThat(tasks, hasItem(hasProperty("assigneeRoleUuid", is("role-uuid-1"))));
 	}
 }
