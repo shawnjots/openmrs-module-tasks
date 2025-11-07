@@ -9,6 +9,7 @@
  */
 package org.openmrs.module.tasks.api.dao;
 
+import org.hl7.fhir.r4.model.CarePlan;
 import org.junit.Test;
 import org.openmrs.Patient;
 import org.openmrs.api.PatientService;
@@ -44,8 +45,8 @@ public class TasksDaoTest extends BaseModuleContextSensitiveTest {
 		//Given
 		Task task = new Task();
 		task.setDescription("some description");
-		task.setStatus("not-started");
-		task.setKind("Appointment");
+		task.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		task.setKind(CarePlan.CarePlanActivityKind.APPOINTMENT);
 		Patient patient = patientService.getPatient(2);
 		task.setPatient(patient);
 		task.setAssignee(userService.getUser(1));
@@ -75,15 +76,15 @@ public class TasksDaoTest extends BaseModuleContextSensitiveTest {
 		
 		Task task1 = new Task();
 		task1.setDescription("Task 1");
-		task1.setStatus("not-started");
-		task1.setKind("Appointment");
+		task1.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		task1.setKind(CarePlan.CarePlanActivityKind.APPOINTMENT);
 		task1.setPatient(patient);
 		dao.saveTask(task1);
 		
 		Task task2 = new Task();
 		task2.setDescription("Task 2");
-		task2.setStatus("in-progress");
-		task2.setKind("MedicationRequest");
+		task2.setStatus(CarePlan.CarePlanActivityStatus.INPROGRESS);
+		task2.setKind(CarePlan.CarePlanActivityKind.MEDICATIONREQUEST);
 		task2.setPatient(patient);
 		dao.saveTask(task2);
 		

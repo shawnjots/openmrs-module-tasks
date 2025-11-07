@@ -9,6 +9,7 @@
  */
 package org.openmrs.module.tasks;
 
+import org.hl7.fhir.r4.model.CarePlan;
 import org.openmrs.BaseOpenmrsData;
 import org.openmrs.Patient;
 import org.openmrs.User;
@@ -21,10 +22,11 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 
 /**
- * Represents a task that corresponds to a FHIR CarePlan with one activity. Task details are stored
- * in CarePlan.activity.detail.
+ * Represents a task that corresponds to a FHIR CarePlan with one activity.
  */
 @Entity(name = "tasks.Task")
 @Table(name = "tasks_task")
@@ -48,12 +50,14 @@ public class Task extends BaseOpenmrsData {
 	private User assignee;
 	
 	@Basic
+	@Enumerated(EnumType.STRING)
 	@Column(name = "status", length = 50)
-	private String status;
+	private CarePlan.CarePlanActivityStatus status;
 	
 	@Basic
+	@Enumerated(EnumType.STRING)
 	@Column(name = "kind", length = 50)
-	private String kind;
+	private CarePlan.CarePlanActivityKind kind;
 	
 	@Override
 	public Integer getId() {
@@ -99,19 +103,19 @@ public class Task extends BaseOpenmrsData {
 		this.assignee = assignee;
 	}
 	
-	public String getStatus() {
+	public CarePlan.CarePlanActivityStatus getStatus() {
 		return status;
 	}
 	
-	public void setStatus(String status) {
+	public void setStatus(CarePlan.CarePlanActivityStatus status) {
 		this.status = status;
 	}
 	
-	public String getKind() {
+	public CarePlan.CarePlanActivityKind getKind() {
 		return kind;
 	}
 	
-	public void setKind(String kind) {
+	public void setKind(CarePlan.CarePlanActivityKind kind) {
 		this.kind = kind;
 	}
 }

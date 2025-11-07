@@ -46,23 +46,14 @@ public class CarePlanMapper {
 		CarePlan.CarePlanActivityDetailComponent detail = new CarePlan.CarePlanActivityDetailComponent();
 		
 		// Set kind (required)
-		// Note: HAPI FHIR uses enum for kind, but we store custom codes as strings
-		// Try to map to enum if possible, otherwise use a default
-		try {
-			if (task.getKind() != null) {
-				CarePlan.CarePlanActivityKind kindEnum = CarePlan.CarePlanActivityKind.fromCode(task.getKind());
-				detail.setKind(kindEnum);
-			} else {
-				detail.setKind(CarePlan.CarePlanActivityKind.APPOINTMENT);
-			}
-		}
-		catch (Exception e) {
-			// If the kind doesn't match an enum, use a default
+		if (task.getKind() != null) {
+			detail.setKind(task.getKind());
+		} else {
 			detail.setKind(CarePlan.CarePlanActivityKind.APPOINTMENT);
 		}
 		
 		if (task.getStatus() != null) {
-			detail.setStatus(CarePlan.CarePlanActivityStatus.fromCode(task.getStatus()));
+			detail.setStatus(task.getStatus());
 		}
 		
 		if (task.getDescription() != null) {
@@ -106,12 +97,12 @@ public class CarePlanMapper {
 				if (detail.hasKind()) {
 					CarePlan.CarePlanActivityKind kind = detail.getKind();
 					if (kind != null) {
-						task.setKind(kind.toCode());
+						task.setKind(kind);
 					}
 				}
 				
 				if (detail.hasStatus()) {
-					task.setStatus(detail.getStatus().toCode());
+					task.setStatus(detail.getStatus());
 				}
 				
 				if (detail.hasDescription()) {
