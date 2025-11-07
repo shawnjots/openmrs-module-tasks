@@ -9,9 +9,9 @@
  */
 package org.openmrs.module.tasks.api.dao;
 
-import org.hibernate.criterion.Restrictions;
-import org.openmrs.api.db.hibernate.DbSession;
-import org.openmrs.api.db.hibernate.DbSessionFactory;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.openmrs.api.db.hibernate.HibernateUtil;
 import org.openmrs.module.tasks.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -22,28 +22,28 @@ import java.util.List;
 public class TasksDao {
 	
 	@Autowired
-	DbSessionFactory sessionFactory;
+	private SessionFactory sessionFactory;
 	
-	private DbSession getSession() {
+	private Session getCurrentSession() {
 		return sessionFactory.getCurrentSession();
 	}
 	
 	public Task getTaskByUuid(String uuid) {
-		return (Task) getSession().createCriteria(Task.class).add(Restrictions.eq("uuid", uuid)).uniqueResult();
+		return HibernateUtil.getUniqueEntityByUUID(sessionFactory, Task.class, uuid);
 	}
 	
 	public Task saveTask(Task task) {
-		getSession().saveOrUpdate(task);
+		getCurrentSession().saveOrUpdate(task);
 		return task;
 	}
 	
 	public void deleteTask(Task task) {
-		getSession().delete(task);
+		getCurrentSession().delete(task);
 	}
 	
-	@SuppressWarnings("unchecked")
 	public List<Task> getTasksByPatientId(Integer patientId) {
-		return getSession().createCriteria(Task.class).add(Restrictions.eq("patient.id", patientId))
-		        .add(Restrictions.eq("voided", false)).list();
+		return getCurrentSession()
+		        .createQuery("from tasks.Task t where t.patient.patientId = :patientId and t.voided = false", Task.class)
+		        .setParameter("patientId", patientId).getResultList();
 	}
 }
