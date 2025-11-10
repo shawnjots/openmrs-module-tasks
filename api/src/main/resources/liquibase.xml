@@ -77,6 +77,7 @@
 		<insert tableName="privilege">
 			<column name="privilege" value="View Tasks"/>
 			<column name="description" value="Allows viewing tasks and task-related FHIR CarePlans"/>
+			<column name="uuid" value="c1eb1b87-9b1e-47c7-8d1b-ccf5165e5b3b"/>
 		</insert>
 	</changeSet>
 
@@ -89,6 +90,7 @@
 		<insert tableName="privilege">
 			<column name="privilege" value="Manage Tasks"/>
 			<column name="description" value="Allows creating and updating tasks"/>
+			<column name="uuid" value="f0cfe0d8-2a5f-4fd0-a6f7-6c8f37e12c2e"/>
 		</insert>
 	</changeSet>
 
@@ -101,6 +103,7 @@
 		<insert tableName="privilege">
 			<column name="privilege" value="Delete Tasks"/>
 			<column name="description" value="Allows voiding and purging tasks"/>
+			<column name="uuid" value="61b7d36f-7486-4c9f-b5ed-47be89f45e9a"/>
 		</insert>
 	</changeSet>
 
