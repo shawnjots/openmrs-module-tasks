@@ -23,6 +23,10 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
+
+import java.util.Date;
 
 /**
  * Represents a task that corresponds to a FHIR CarePlan with one activity.
@@ -44,11 +48,18 @@ public class Task extends BaseOpenmrsData {
 	private String description;
 	
 	@ManyToOne
-	@JoinColumn(name = "provider_id")
+	@JoinColumn(name = "assignee_provider_id")
 	private Provider assignee;
 	
-	@Column(name = "assignee_role_uuid", length = 38)
-	private String assigneeRoleUuid;
+	@Column(name = "assignee_provider_role_id")
+	private Integer assigneeProviderRoleId;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "due_date")
+	private Date dueDate;
+	
+	@Column(name = "rationale", length = 1000)
+	private String rationale;
 	
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", length = 50)
@@ -102,12 +113,12 @@ public class Task extends BaseOpenmrsData {
 		this.assignee = assignee;
 	}
 	
-	public String getAssigneeRoleUuid() {
-		return assigneeRoleUuid;
+	public Integer getAssigneeProviderRoleId() {
+		return assigneeProviderRoleId;
 	}
 	
-	public void setAssigneeRoleUuid(String assigneeRoleUuid) {
-		this.assigneeRoleUuid = assigneeRoleUuid;
+	public void setAssigneeProviderRoleId(Integer assigneeProviderRoleId) {
+		this.assigneeProviderRoleId = assigneeProviderRoleId;
 	}
 	
 	public CarePlan.CarePlanActivityStatus getStatus() {
@@ -124,5 +135,21 @@ public class Task extends BaseOpenmrsData {
 	
 	public void setKind(CarePlan.CarePlanActivityKind kind) {
 		this.kind = kind;
+	}
+	
+	public Date getDueDate() {
+		return dueDate;
+	}
+	
+	public void setDueDate(Date dueDate) {
+		this.dueDate = dueDate;
+	}
+	
+	public String getRationale() {
+		return rationale;
+	}
+	
+	public void setRationale(String rationale) {
+		this.rationale = rationale;
 	}
 }

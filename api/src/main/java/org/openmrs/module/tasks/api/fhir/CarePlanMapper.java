@@ -14,9 +14,16 @@ import org.hl7.fhir.r4.model.CarePlan;
 import org.hl7.fhir.r4.model.CarePlan.CarePlanActivityComponent;
 import org.hl7.fhir.r4.model.CarePlan.CarePlanActivityDetailComponent;
 import org.hl7.fhir.r4.model.CarePlan.CarePlanActivityKind;
+import org.hl7.fhir.r4.model.DateTimeType;
+import org.hl7.fhir.r4.model.DateType;
+import org.hl7.fhir.r4.model.Period;
 import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.Timing;
+import org.hl7.fhir.instance.model.api.IBaseDatatype;
 import org.openmrs.Patient;
 import org.openmrs.Provider;
+import org.openmrs.ProviderRole;
+import org.openmrs.api.ProviderService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.fhir2.api.translators.PatientReferenceTranslator;
 import org.openmrs.module.fhir2.api.translators.PractitionerReferenceTranslator;
@@ -26,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.lang.reflect.Method;
 import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
@@ -100,22 +106,35 @@ public class CarePlanMapper {
 			detail.setDescription(task.getDescription());
 		}
 		
+		if (StringUtils.isNotBlank(task.getRationale())) {
+			carePlan.setDescription(task.getRationale());
+		}
+		
 		if (task.getAssignee() != null) {
 			Reference performerRef = practitionerReferenceTranslator.toFhirResource(task.getAssignee());
 			if (performerRef != null) {
-			detail.addPerformer(performerRef);
-		}
-		}
-		
-		if (StringUtils.isNotBlank(task.getAssigneeRoleUuid())) {
-			Reference rolePerformer = buildPractitionerRoleReference(task.getAssigneeRoleUuid());
-			if (rolePerformer != null) {
-				detail.addPerformer(rolePerformer);
+				detail.addPerformer(performerRef);
 			}
 		}
 		
+		if (task.getAssigneeProviderRoleId() != null) {
+			String roleUuid = resolveProviderRoleUuid(task.getAssigneeProviderRoleId());
+			if (StringUtils.isNotBlank(roleUuid)) {
+				Reference rolePerformer = buildPractitionerRoleReference(roleUuid);
+				if (rolePerformer != null) {
+					detail.addPerformer(rolePerformer);
+				}
+			}
+		}
+		
+		if (task.getDueDate() != null) {
+			Period period = new Period();
+			period.setEnd(task.getDueDate());
+			detail.setScheduled(period);
+		}
+		
 		if (!detail.isEmpty()) {
-		activity.setDetail(detail);
+			activity.setDetail(detail);
 		}
 		
 		carePlan.addActivity(activity);
@@ -133,15 +152,33 @@ public class CarePlanMapper {
 	 * @return the Task entity
 	 */
 	public Task toTask(CarePlan carePlan, Patient patient, Provider assignee, String assigneeRoleUuid) {
-		Task task = new Task();
+		return applyCarePlanToTask(new Task(), carePlan, patient, assignee, assigneeRoleUuid);
+	}
+	
+	/**
+	 * Applies values from a CarePlan resource to the provided Task.
+	 * 
+	 * @param task the Task to update; if {@code null}, a new Task is created
+	 * @param carePlan the source CarePlan
+	 * @param patient the patient associated with the task
+	 * @param assignee the resolved provider (optional)
+	 * @param assigneeRoleUuid the resolved provider role UUID (optional)
+	 * @return the updated Task instance
+	 */
+	public Task applyCarePlanToTask(Task task, CarePlan carePlan, Patient patient, Provider assignee, String assigneeRoleUuid) {
+		if (task == null) {
+			task = new Task();
+		}
 		
 		if (carePlan.hasId()) {
 			task.setUuid(carePlan.getId());
 		}
 		
 		task.setPatient(patient);
-		task.setAssignee(assignee);
-		task.setAssigneeRoleUuid(StringUtils.isNotBlank(assigneeRoleUuid) ? assigneeRoleUuid : null);
+		task.setAssignee(null);
+		task.setAssigneeProviderRoleId(null);
+		task.setDueDate(null);
+		task.setRationale(null);
 		
 		if (carePlan.hasActivity() && !carePlan.getActivity().isEmpty()) {
 			CarePlanActivityComponent activity = carePlan.getActivityFirstRep();
@@ -159,8 +196,27 @@ public class CarePlanMapper {
 					task.setDescription(detail.getDescription());
 				}
 				
+				if (detail.hasScheduledPeriod() && detail.getScheduledPeriod().hasEnd()) {
+					task.setDueDate(detail.getScheduledPeriod().getEnd());
+				} else if (detail.hasScheduled()) {
+					IBaseDatatype scheduledElement = detail.getScheduled();
+					if (scheduledElement instanceof DateTimeType) {
+						task.setDueDate(((DateTimeType) scheduledElement).getValue());
+					} else if (scheduledElement instanceof DateType) {
+						task.setDueDate(((DateType) scheduledElement).getValue());
+					} else if (scheduledElement instanceof Timing) {
+						Timing timing = (Timing) scheduledElement;
+						if (!timing.getEvent().isEmpty()) {
+							task.setDueDate(timing.getEvent().get(0).getValue());
+						} else if (timing.getRepeat() != null && timing.getRepeat().hasBoundsPeriod()
+						        && timing.getRepeat().getBoundsPeriod().hasEnd()) {
+							task.setDueDate(timing.getRepeat().getBoundsPeriod().getEnd());
+						}
+					}
+				}
+				
 				if (detail.hasPerformer()) {
-					detail.getPerformer().forEach(performer -> {
+					for (Reference performer : detail.getPerformer()) {
 						String resourceType = getReferenceType(performer);
 						if ("Practitioner".equalsIgnoreCase(resourceType)) {
 							Provider provider = practitionerReferenceTranslator.toOpenmrsType(performer);
@@ -170,16 +226,28 @@ public class CarePlanMapper {
 						} else if (PRACTITIONER_ROLE_TYPE.equalsIgnoreCase(resourceType)) {
 							String roleUuid = extractRoleUuid(performer);
 							if (StringUtils.isNotBlank(roleUuid)) {
-								task.setAssigneeRoleUuid(roleUuid);
+								Integer providerRoleId = resolveProviderRoleId(roleUuid);
+								if (providerRoleId != null) {
+									task.setAssigneeProviderRoleId(providerRoleId);
+								}
 							}
 						}
-					});
-					
-					if (task.getAssignee() == null && assignee != null) {
-				task.setAssignee(assignee);
 					}
 				}
 			}
+		}
+		
+		if (task.getAssignee() == null && assignee != null) {
+			task.setAssignee(assignee);
+		}
+		if (task.getAssigneeProviderRoleId() == null && StringUtils.isNotBlank(assigneeRoleUuid)) {
+			Integer providerRoleId = resolveProviderRoleId(assigneeRoleUuid);
+			if (providerRoleId != null) {
+				task.setAssigneeProviderRoleId(providerRoleId);
+			}
+		}
+		if (carePlan.hasDescription()) {
+			task.setRationale(StringUtils.defaultIfBlank(carePlan.getDescription(), null));
 		}
 		
 		return task;
@@ -269,7 +337,15 @@ public class CarePlanMapper {
 			return reference.getType();
 		}
 		if (reference.getReferenceElement() != null) {
-			return reference.getReferenceElement().getResourceType();
+			String resourceType = reference.getReferenceElement().getResourceType();
+			if (resourceType != null) {
+				return resourceType;
+			}
+			// Fallback: try to extract from reference string (e.g., "PractitionerRole/uuid")
+			String ref = reference.getReference();
+			if (ref != null && ref.contains("/")) {
+				return ref.substring(0, ref.indexOf("/"));
+			}
 		}
 		return null;
 	}
@@ -292,21 +368,61 @@ public class CarePlanMapper {
 			return Optional.empty();
 		}
 		try {
-			Class<?> serviceClass = Context.loadClass("org.openmrs.module.providermanagement.api.ProviderManagementService");
-			Object service = Context.getService(serviceClass);
-			Method method = serviceClass.getMethod("getProviderRoleByUuid", String.class);
-			Object providerRole = method.invoke(service, providerRoleUuid);
+			ProviderService providerService = Context.getProviderService();
+			ProviderRole providerRole = providerService.getProviderRoleByUuid(providerRoleUuid);
 			if (providerRole != null) {
-				Method getName = providerRole.getClass().getMethod("getName");
-				return Optional.ofNullable((String) getName.invoke(providerRole));
+				return Optional.ofNullable(providerRole.getName());
 			}
-		}
-		catch (ClassNotFoundException ex) {
-			log.debug("Provider Management module not present; skipping provider role display resolution");
 		}
 		catch (Exception ex) {
 			log.warn("Unable to resolve provider role display for uuid {}", providerRoleUuid, ex);
 		}
 		return Optional.empty();
+	}
+	
+	/**
+	 * Resolves a ProviderRole ID from a ProviderRole UUID.
+	 * 
+	 * @param providerRoleUuid the ProviderRole UUID
+	 * @return the ProviderRole ID, or null if not found
+	 */
+	private Integer resolveProviderRoleId(String providerRoleUuid) {
+		if (StringUtils.isBlank(providerRoleUuid)) {
+			return null;
+		}
+		try {
+			ProviderService providerService = Context.getProviderService();
+			ProviderRole providerRole = providerService.getProviderRoleByUuid(providerRoleUuid);
+			if (providerRole != null) {
+				return providerRole.getProviderRoleId();
+			}
+		}
+		catch (Exception ex) {
+			log.warn("Unable to resolve provider role ID for uuid {}", providerRoleUuid, ex);
+		}
+		return null;
+	}
+	
+	/**
+	 * Resolves a ProviderRole UUID from a ProviderRole ID.
+	 * 
+	 * @param providerRoleId the ProviderRole ID
+	 * @return the ProviderRole UUID, or null if not found
+	 */
+	private String resolveProviderRoleUuid(Integer providerRoleId) {
+		if (providerRoleId == null) {
+			return null;
+		}
+		try {
+			ProviderService providerService = Context.getProviderService();
+			ProviderRole providerRole = providerService.getProviderRole(providerRoleId);
+			if (providerRole != null) {
+				return providerRole.getUuid();
+			}
+		}
+		catch (Exception ex) {
+			log.warn("Unable to resolve provider role UUID for id {}", providerRoleId, ex);
+		}
+		return null;
 	}
 }

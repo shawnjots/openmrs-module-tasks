@@ -11,5 +11,16 @@
 	<bean id="observationReferenceRangeTranslator"
 		class="org.openmrs.module.tasks.api.config.TestObservationReferenceRangeTranslator"/>
 
+	<!-- Mock cacheInterceptor bean required by FHIR2 module -->
+	<bean id="cacheInterceptor" class="org.openmrs.module.tasks.api.config.TestCacheInterceptor"/>
+
+	<!-- Mock transactionInterceptor bean required by FHIR2 module -->
+	<bean id="transactionInterceptor" class="org.springframework.transaction.interceptor.TransactionInterceptor">
+		<property name="transactionManager" ref="transactionManager"/>
+		<property name="transactionAttributeSource">
+			<bean class="org.springframework.transaction.annotation.AnnotationTransactionAttributeSource"/>
+		</property>
+	</bean>
+
 </beans>
 

@@ -118,4 +118,60 @@
 		</addColumn>
 	</changeSet>
 
+	<changeSet id="tasks-2025-11-10-due-date-rationale" author="assistant">
+		<preConditions onFail="MARK_RAN">
+			<tableExists tableName="tasks_task"/>
+		</preConditions>
+		<addColumn tableName="tasks_task">
+			<column name="due_date" type="datetime"/>
+			<column name="rationale" type="text"/>
+		</addColumn>
+	</changeSet>
+
+	<changeSet id="tasks-2025-01-15-fix-assignee-provider-id" author="developer">
+		<preConditions onFail="MARK_RAN">
+			<and>
+				<tableExists tableName="tasks_task"/>
+				<columnExists tableName="tasks_task" columnName="provider_id"/>
+			</and>
+		</preConditions>
+		<comment>
+			Rename provider_id to assignee_provider_id
+		</comment>
+		<dropForeignKeyConstraint baseTableName="tasks_task" constraintName="tasks_task_provider_fk"/>
+		<renameColumn tableName="tasks_task" oldColumnName="provider_id" newColumnName="assignee_provider_id" columnDataType="int"/>
+		<addForeignKeyConstraint constraintName="tasks_task_assignee_provider_fk" baseTableName="tasks_task" baseColumnNames="assignee_provider_id" referencedTableName="provider" referencedColumnNames="provider_id"/>
+	</changeSet>
+
+	<changeSet id="tasks-2025-01-15-drop-assignee-role-uuid" author="developer">
+		<preConditions onFail="MARK_RAN">
+			<and>
+				<tableExists tableName="tasks_task"/>
+				<columnExists tableName="tasks_task" columnName="assignee_role_uuid"/>
+			</and>
+		</preConditions>
+		<comment>
+			Drop assignee_role_uuid column
+		</comment>
+		<dropColumn tableName="tasks_task" columnName="assignee_role_uuid"/>
+	</changeSet>
+
+	<changeSet id="tasks-2025-01-15-add-assignee-provider-role-id" author="developer">
+		<preConditions onFail="MARK_RAN">
+			<and>
+				<tableExists tableName="tasks_task"/>
+				<not>
+					<columnExists tableName="tasks_task" columnName="assignee_provider_role_id"/>
+				</not>
+			</and>
+		</preConditions>
+		<comment>
+			Add assignee_provider_role_id column with foreign key to provider_role table
+		</comment>
+		<addColumn tableName="tasks_task">
+			<column name="assignee_provider_role_id" type="int"/>
+		</addColumn>
+		<addForeignKeyConstraint constraintName="tasks_task_assignee_provider_role_fk" baseTableName="tasks_task" baseColumnNames="assignee_provider_role_id" referencedTableName="provider_role" referencedColumnNames="provider_role_id"/>
+	</changeSet>
+
 </databaseChangeLog>
