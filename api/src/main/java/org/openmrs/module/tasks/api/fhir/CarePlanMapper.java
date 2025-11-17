@@ -16,6 +16,7 @@ import org.hl7.fhir.r4.model.CarePlan.CarePlanActivityDetailComponent;
 import org.hl7.fhir.r4.model.CarePlan.CarePlanActivityKind;
 import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.DateType;
+import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.Period;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Timing;
@@ -23,10 +24,13 @@ import org.hl7.fhir.instance.model.api.IBaseDatatype;
 import org.openmrs.Patient;
 import org.openmrs.Provider;
 import org.openmrs.ProviderRole;
+import org.openmrs.Visit;
 import org.openmrs.api.ProviderService;
+import org.openmrs.api.VisitService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.fhir2.api.translators.PatientReferenceTranslator;
 import org.openmrs.module.fhir2.api.translators.PractitionerReferenceTranslator;
+import org.openmrs.module.tasks.DueDateType;
 import org.openmrs.module.tasks.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +52,12 @@ public class CarePlanMapper {
 	private static final Logger log = LoggerFactory.getLogger(CarePlanMapper.class);
 	
 	private static final String PRACTITIONER_ROLE_TYPE = "PractitionerRole";
+	
+	private static final String ENCOUNTER_ASSOCIATED_ENCOUNTER_EXTENSION_URL = "http://hl7.org/fhir/StructureDefinition/encounter-associatedEncounter";
+	
+	private static final String SCHEDULED_STRING_THIS_VISIT = "this visit";
+	
+	private static final String SCHEDULED_STRING_NEXT_VISIT = "next visit";
 	
 	private static final Map<CarePlanActivityKind, String> KIND_TO_RESOURCE_TYPE = new EnumMap<>(CarePlanActivityKind.class);
 	
@@ -127,9 +137,34 @@ public class CarePlanMapper {
 			}
 		}
 		
-		if (task.getDueDate() != null) {
+		// Handle due date based on type
+		if (task.getDueDateType() != null) {
+			if (task.getDueDateType() == DueDateType.THIS_VISIT || task.getDueDateType() == DueDateType.NEXT_VISIT) {
+				// Use scheduledString for visit-based due dates
+				String scheduledString = task.getDueDateType() == DueDateType.THIS_VISIT 
+				        ? SCHEDULED_STRING_THIS_VISIT 
+				        : SCHEDULED_STRING_NEXT_VISIT;
+				detail.setScheduled(new org.hl7.fhir.r4.model.StringType(scheduledString));
+				
+				// Add encounter extension if visit reference exists
+				if (task.getDueDateReferenceVisit() != null) {
+					Extension encounterExtension = new Extension();
+					encounterExtension.setUrl(ENCOUNTER_ASSOCIATED_ENCOUNTER_EXTENSION_URL);
+					Reference encounterRef = new Reference();
+					encounterRef.setReference("Encounter/" + task.getDueDateReferenceVisit().getUuid());
+					encounterExtension.setValue(encounterRef);
+					detail.addExtension(encounterExtension);
+				}
+			} else if (task.getDueDateType() == DueDateType.DATE && task.getDueDateDate() != null) {
+				// Use scheduledPeriod for actual dates
+				Period period = new Period();
+				period.setEnd(task.getDueDateDate());
+				detail.setScheduled(period);
+			}
+		} else if (task.getDueDateDate() != null) {
+			// Fallback for backward compatibility: if no type is set but date exists, treat as DATE
 			Period period = new Period();
-			period.setEnd(task.getDueDate());
+			period.setEnd(task.getDueDateDate());
 			detail.setScheduled(period);
 		}
 		
@@ -177,7 +212,9 @@ public class CarePlanMapper {
 		task.setPatient(patient);
 		task.setAssignee(null);
 		task.setAssigneeProviderRoleId(null);
-		task.setDueDate(null);
+		task.setDueDateDate(null);
+		task.setDueDateType(null);
+		task.setDueDateReferenceVisit(null);
 		task.setRationale(null);
 		
 		if (carePlan.hasActivity() && !carePlan.getActivity().isEmpty()) {
@@ -196,21 +233,60 @@ public class CarePlanMapper {
 					task.setDescription(detail.getDescription());
 				}
 				
-				if (detail.hasScheduledPeriod() && detail.getScheduledPeriod().hasEnd()) {
-					task.setDueDate(detail.getScheduledPeriod().getEnd());
-				} else if (detail.hasScheduled()) {
+				// Handle due date conversion
+				if (detail.hasScheduled()) {
 					IBaseDatatype scheduledElement = detail.getScheduled();
-					if (scheduledElement instanceof DateTimeType) {
-						task.setDueDate(((DateTimeType) scheduledElement).getValue());
+					
+					// Check for scheduledString (visit-based due dates)
+					if (scheduledElement instanceof org.hl7.fhir.r4.model.StringType) {
+						String scheduledString = ((org.hl7.fhir.r4.model.StringType) scheduledElement).getValue();
+						if (SCHEDULED_STRING_THIS_VISIT.equalsIgnoreCase(scheduledString)) {
+							task.setDueDateType(DueDateType.THIS_VISIT);
+						} else if (SCHEDULED_STRING_NEXT_VISIT.equalsIgnoreCase(scheduledString)) {
+							task.setDueDateType(DueDateType.NEXT_VISIT);
+						}
+						
+						// Extract visit reference from extension
+						if (detail.hasExtension()) {
+							for (Extension ext : detail.getExtension()) {
+								if (ENCOUNTER_ASSOCIATED_ENCOUNTER_EXTENSION_URL.equals(ext.getUrl())
+								        && ext.hasValue() && ext.getValue() instanceof Reference) {
+									Reference encounterRef = (Reference) ext.getValue();
+									String encounterUuid = extractEncounterUuid(encounterRef);
+									if (StringUtils.isNotBlank(encounterUuid)) {
+										Visit visit = resolveVisitByUuid(encounterUuid);
+										if (visit != null) {
+											task.setDueDateReferenceVisit(visit);
+										}
+									}
+								}
+							}
+						}
+					}
+					// Check for scheduledPeriod (actual date)
+					else if (scheduledElement instanceof Period) {
+						Period period = (Period) scheduledElement;
+						if (period.hasEnd()) {
+							task.setDueDateType(DueDateType.DATE);
+							task.setDueDateDate(period.getEnd());
+						}
+					}
+					// Fallback for other scheduled types
+					else if (scheduledElement instanceof DateTimeType) {
+						task.setDueDateType(DueDateType.DATE);
+						task.setDueDateDate(((DateTimeType) scheduledElement).getValue());
 					} else if (scheduledElement instanceof DateType) {
-						task.setDueDate(((DateType) scheduledElement).getValue());
+						task.setDueDateType(DueDateType.DATE);
+						task.setDueDateDate(((DateType) scheduledElement).getValue());
 					} else if (scheduledElement instanceof Timing) {
 						Timing timing = (Timing) scheduledElement;
 						if (!timing.getEvent().isEmpty()) {
-							task.setDueDate(timing.getEvent().get(0).getValue());
+							task.setDueDateType(DueDateType.DATE);
+							task.setDueDateDate(timing.getEvent().get(0).getValue());
 						} else if (timing.getRepeat() != null && timing.getRepeat().hasBoundsPeriod()
 						        && timing.getRepeat().getBoundsPeriod().hasEnd()) {
-							task.setDueDate(timing.getRepeat().getBoundsPeriod().getEnd());
+							task.setDueDateType(DueDateType.DATE);
+							task.setDueDateDate(timing.getRepeat().getBoundsPeriod().getEnd());
 						}
 					}
 				}
@@ -422,6 +498,50 @@ public class CarePlanMapper {
 		}
 		catch (Exception ex) {
 			log.warn("Unable to resolve provider role UUID for id {}", providerRoleId, ex);
+		}
+		return null;
+	}
+	
+	/**
+	 * Extracts the encounter UUID from a Reference.
+	 * 
+	 * @param encounterRef the encounter reference
+	 * @return the encounter UUID, or null if not found
+	 */
+	private String extractEncounterUuid(Reference encounterRef) {
+		if (encounterRef == null) {
+			return null;
+		}
+		if (encounterRef.getReferenceElement() != null && StringUtils.isNotBlank(encounterRef.getReferenceElement().getIdPart())) {
+			return encounterRef.getReferenceElement().getIdPart();
+		}
+		// Handle "Encounter/uuid" format
+		if (encounterRef.hasReference()) {
+			String ref = encounterRef.getReference();
+			if (ref != null && ref.startsWith("Encounter/")) {
+				return ref.substring("Encounter/".length());
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * Resolves a Visit entity by UUID.
+	 * 
+	 * @param visitUuid the Visit UUID
+	 * @return the Visit entity, or null if not found
+	 */
+	private Visit resolveVisitByUuid(String visitUuid) {
+		if (StringUtils.isBlank(visitUuid)) {
+			return null;
+		}
+		try {
+			VisitService visitService = Context.getVisitService();
+			Visit visit = visitService.getVisitByUuid(visitUuid);
+			return visit;
+		}
+		catch (Exception ex) {
+			log.warn("Unable to resolve visit for uuid {}", visitUuid, ex);
 		}
 		return null;
 	}

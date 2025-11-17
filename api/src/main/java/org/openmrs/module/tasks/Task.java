@@ -13,6 +13,7 @@ import org.hl7.fhir.r4.model.CarePlan;
 import org.openmrs.BaseOpenmrsData;
 import org.openmrs.Patient;
 import org.openmrs.Provider;
+import org.openmrs.Visit;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -55,8 +56,16 @@ public class Task extends BaseOpenmrsData {
 	private Integer assigneeProviderRoleId;
 	
 	@Temporal(TemporalType.TIMESTAMP)
-	@Column(name = "due_date")
-	private Date dueDate;
+	@Column(name = "due_date_date")
+	private Date dueDateDate;
+	
+	@Enumerated(EnumType.STRING)
+	@Column(name = "due_date_type", length = 20)
+	private DueDateType dueDateType;
+	
+	@ManyToOne
+	@JoinColumn(name = "due_date_reference_visit_id")
+	private Visit dueDateReferenceVisit;
 	
 	@Column(name = "rationale", length = 1000)
 	private String rationale;
@@ -137,12 +146,44 @@ public class Task extends BaseOpenmrsData {
 		this.kind = kind;
 	}
 	
-	public Date getDueDate() {
-		return dueDate;
+	public Date getDueDateDate() {
+		return dueDateDate;
 	}
 	
+	public void setDueDateDate(Date dueDateDate) {
+		this.dueDateDate = dueDateDate;
+	}
+	
+	public DueDateType getDueDateType() {
+		return dueDateType;
+	}
+	
+	public void setDueDateType(DueDateType dueDateType) {
+		this.dueDateType = dueDateType;
+	}
+	
+	public Visit getDueDateReferenceVisit() {
+		return dueDateReferenceVisit;
+	}
+	
+	public void setDueDateReferenceVisit(Visit dueDateReferenceVisit) {
+		this.dueDateReferenceVisit = dueDateReferenceVisit;
+	}
+	
+	/**
+	 * @deprecated Use {@link #getDueDateDate()} instead
+	 */
+	@Deprecated
+	public Date getDueDate() {
+		return dueDateDate;
+	}
+	
+	/**
+	 * @deprecated Use {@link #setDueDateDate(Date)} instead
+	 */
+	@Deprecated
 	public void setDueDate(Date dueDate) {
-		this.dueDate = dueDate;
+		this.dueDateDate = dueDate;
 	}
 	
 	public String getRationale() {

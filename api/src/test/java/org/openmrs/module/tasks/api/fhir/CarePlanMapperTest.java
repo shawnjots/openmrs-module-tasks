@@ -10,7 +10,10 @@
 package org.openmrs.module.tasks.api.fhir;
 
 import org.hl7.fhir.r4.model.CarePlan;
+import org.hl7.fhir.r4.model.Extension;
+import org.hl7.fhir.r4.model.Period;
 import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.StringType;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -18,13 +21,18 @@ import org.mockito.MockitoAnnotations;
 import org.openmrs.Patient;
 import org.openmrs.Provider;
 import org.openmrs.ProviderRole;
+import org.openmrs.Visit;
+import org.openmrs.VisitType;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.ProviderService;
+import org.openmrs.api.VisitService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.fhir2.api.translators.PatientReferenceTranslator;
 import org.openmrs.module.fhir2.api.translators.PractitionerReferenceTranslator;
+import org.openmrs.module.tasks.DueDateType;
 import org.openmrs.module.tasks.Task;
 import org.openmrs.test.BaseModuleContextSensitiveTest;
+import java.util.Date;
 import java.util.Properties;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -60,9 +68,13 @@ public class CarePlanMapperTest extends BaseModuleContextSensitiveTest {
 	
 	private ProviderRole testProviderRole;
 	
+	private Visit testVisit;
+	
 	private PatientService patientService;
 	
 	private ProviderService providerService;
+	
+	private VisitService visitService;
 	
 	@Before
 	public void setUp() throws Exception {
@@ -70,6 +82,7 @@ public class CarePlanMapperTest extends BaseModuleContextSensitiveTest {
 		
 		patientService = Context.getPatientService();
 		providerService = Context.getProviderService();
+		visitService = Context.getVisitService();
 		
 		// Get test patient from test dataset
 		testPatient = patientService.getPatient(2);
@@ -152,6 +165,35 @@ public class CarePlanMapperTest extends BaseModuleContextSensitiveTest {
 			}
 			return null;
 		});
+		
+		// Create a test Visit
+		testVisit = new Visit();
+		testVisit.setPatient(testPatient);
+		testVisit.setStartDatetime(new Date());
+		// Try to get an existing visit type, or use the first available one
+		VisitType visitType = visitService.getVisitType(1);
+		if (visitType == null) {
+			// Try to get any visit type
+			java.util.List<VisitType> visitTypes = visitService.getAllVisitTypes();
+			if (visitTypes != null && !visitTypes.isEmpty()) {
+				visitType = visitTypes.get(0);
+			} else {
+				// If no visit types exist, create a minimal one (may not persist, but enough for testing)
+				visitType = new VisitType();
+				visitType.setName("Test Visit Type");
+				visitType.setUuid("test-visit-type-uuid-" + System.currentTimeMillis());
+			}
+		}
+		testVisit.setVisitType(visitType);
+		try {
+			testVisit = visitService.saveVisit(testVisit);
+		} catch (Exception e) {
+			// If saving fails, create a minimal visit object for testing
+			// (visit may not be in DB, but tests that don't require DB persistence will still work)
+			if (testVisit.getUuid() == null) {
+				testVisit.setUuid("test-visit-uuid-" + System.currentTimeMillis());
+			}
+		}
 		
 		// Create mapper instance with mocked dependencies
 		carePlanMapper = new CarePlanMapper(patientReferenceTranslator, practitionerReferenceTranslator);
@@ -293,6 +335,185 @@ public class CarePlanMapperTest extends BaseModuleContextSensitiveTest {
 		assertThat(foundPractitioner, is(true));
 	}
 	
+	// ========== Due Date Type Tests ==========
+	
+	@Test
+	public void toCarePlan_withDueDateTypeThisVisit_shouldUseScheduledStringAndEncounterExtension() {
+		// Given: A Task with THIS_VISIT due date type and visit reference
+		Task task = new Task();
+		task.setPatient(testPatient);
+		task.setDescription("Test task");
+		task.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		task.setDueDateType(DueDateType.THIS_VISIT);
+		task.setDueDateReferenceVisit(testVisit);
+		
+		// When: Converting Task to CarePlan
+		CarePlan carePlan = carePlanMapper.toCarePlan(task);
+		
+		// Then: CarePlan should use scheduledString "this visit" and include encounter extension
+		assertThat(carePlan, is(notNullValue()));
+		assertThat(carePlan.hasActivity(), is(true));
+		CarePlan.CarePlanActivityDetailComponent detail = carePlan.getActivityFirstRep().getDetail();
+		assertThat(detail.hasScheduled(), is(true));
+		
+		// Verify scheduledString
+		assertThat(detail.getScheduled() instanceof StringType, is(true));
+		StringType scheduledString = (StringType) detail.getScheduled();
+		assertThat(scheduledString.getValue(), is("this visit"));
+		
+		// Verify encounter extension
+		assertThat(detail.hasExtension(), is(true));
+		boolean foundEncounterExtension = false;
+		for (Extension ext : detail.getExtension()) {
+			if ("http://hl7.org/fhir/StructureDefinition/encounter-associatedEncounter".equals(ext.getUrl())) {
+				foundEncounterExtension = true;
+				assertThat(ext.hasValue(), is(true));
+				assertThat(ext.getValue() instanceof Reference, is(true));
+				Reference encounterRef = (Reference) ext.getValue();
+				assertThat(encounterRef.getReference(), is("Encounter/" + testVisit.getUuid()));
+			}
+		}
+		assertThat(foundEncounterExtension, is(true));
+	}
+	
+	@Test
+	public void toCarePlan_withDueDateTypeNextVisit_shouldUseScheduledStringAndEncounterExtension() {
+		// Given: A Task with NEXT_VISIT due date type and visit reference
+		Task task = new Task();
+		task.setPatient(testPatient);
+		task.setDescription("Test task");
+		task.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		task.setDueDateType(DueDateType.NEXT_VISIT);
+		task.setDueDateReferenceVisit(testVisit);
+		
+		// When: Converting Task to CarePlan
+		CarePlan carePlan = carePlanMapper.toCarePlan(task);
+		
+		// Then: CarePlan should use scheduledString "next visit" and include encounter extension
+		assertThat(carePlan, is(notNullValue()));
+		assertThat(carePlan.hasActivity(), is(true));
+		CarePlan.CarePlanActivityDetailComponent detail = carePlan.getActivityFirstRep().getDetail();
+		assertThat(detail.hasScheduled(), is(true));
+		
+		// Verify scheduledString
+		assertThat(detail.getScheduled() instanceof StringType, is(true));
+		StringType scheduledString = (StringType) detail.getScheduled();
+		assertThat(scheduledString.getValue(), is("next visit"));
+		
+		// Verify encounter extension
+		assertThat(detail.hasExtension(), is(true));
+		boolean foundEncounterExtension = false;
+		for (Extension ext : detail.getExtension()) {
+			if ("http://hl7.org/fhir/StructureDefinition/encounter-associatedEncounter".equals(ext.getUrl())) {
+				foundEncounterExtension = true;
+				assertThat(ext.hasValue(), is(true));
+				assertThat(ext.getValue() instanceof Reference, is(true));
+				Reference encounterRef = (Reference) ext.getValue();
+				assertThat(encounterRef.getReference(), is("Encounter/" + testVisit.getUuid()));
+			}
+		}
+		assertThat(foundEncounterExtension, is(true));
+	}
+	
+	@Test
+	public void toCarePlan_withDueDateTypeDate_shouldUseScheduledPeriod() {
+		// Given: A Task with DATE due date type and actual date
+		Date dueDate = new Date();
+		Task task = new Task();
+		task.setPatient(testPatient);
+		task.setDescription("Test task");
+		task.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		task.setDueDateType(DueDateType.DATE);
+		task.setDueDateDate(dueDate);
+		
+		// When: Converting Task to CarePlan
+		CarePlan carePlan = carePlanMapper.toCarePlan(task);
+		
+		// Then: CarePlan should use scheduledPeriod with end date
+		assertThat(carePlan, is(notNullValue()));
+		assertThat(carePlan.hasActivity(), is(true));
+		CarePlan.CarePlanActivityDetailComponent detail = carePlan.getActivityFirstRep().getDetail();
+		assertThat(detail.hasScheduled(), is(true));
+		assertThat(detail.hasScheduledPeriod(), is(true));
+		Period period = detail.getScheduledPeriod();
+		assertThat(period.hasEnd(), is(true));
+		assertThat(period.getEnd(), is(dueDate));
+	}
+	
+	@Test
+	public void applyCarePlanToTask_withScheduledStringThisVisit_shouldSetDueDateTypeThisVisit() {
+		// Given: A CarePlan with scheduledString "this visit" and encounter extension
+		CarePlan carePlan = createCarePlanWithScheduledString("this visit", testVisit.getUuid());
+		Task task = new Task();
+		
+		// When: Converting CarePlan to Task
+		Task result = carePlanMapper.applyCarePlanToTask(task, carePlan, testPatient, null, null);
+		
+		// Then: Task should have THIS_VISIT type and visit reference
+		assertThat(result.getDueDateType(), is(DueDateType.THIS_VISIT));
+		assertThat(result.getDueDateReferenceVisit(), is(notNullValue()));
+		assertThat(result.getDueDateReferenceVisit().getUuid(), is(testVisit.getUuid()));
+		assertThat(result.getDueDateDate(), is(nullValue()));
+	}
+	
+	@Test
+	public void applyCarePlanToTask_withScheduledStringNextVisit_shouldSetDueDateTypeNextVisit() {
+		// Given: A CarePlan with scheduledString "next visit" and encounter extension
+		CarePlan carePlan = createCarePlanWithScheduledString("next visit", testVisit.getUuid());
+		Task task = new Task();
+		
+		// When: Converting CarePlan to Task
+		Task result = carePlanMapper.applyCarePlanToTask(task, carePlan, testPatient, null, null);
+		
+		// Then: Task should have NEXT_VISIT type and visit reference
+		assertThat(result.getDueDateType(), is(DueDateType.NEXT_VISIT));
+		assertThat(result.getDueDateReferenceVisit(), is(notNullValue()));
+		assertThat(result.getDueDateReferenceVisit().getUuid(), is(testVisit.getUuid()));
+		assertThat(result.getDueDateDate(), is(nullValue()));
+	}
+	
+	@Test
+	public void applyCarePlanToTask_withScheduledPeriod_shouldSetDueDateTypeDate() {
+		// Given: A CarePlan with scheduledPeriod
+		Date dueDate = new Date();
+		CarePlan carePlan = createCarePlanWithScheduledPeriod(dueDate);
+		Task task = new Task();
+		
+		// When: Converting CarePlan to Task
+		Task result = carePlanMapper.applyCarePlanToTask(task, carePlan, testPatient, null, null);
+		
+		// Then: Task should have DATE type and date value
+		assertThat(result.getDueDateType(), is(DueDateType.DATE));
+		assertThat(result.getDueDateDate(), is(notNullValue()));
+		assertThat(result.getDueDateDate(), is(dueDate));
+		assertThat(result.getDueDateReferenceVisit(), is(nullValue()));
+	}
+	
+	@Test
+	public void toCarePlan_withBackwardCompatibilityDueDate_shouldUseScheduledPeriod() {
+		// Given: A Task with dueDateDate but no dueDateType (backward compatibility)
+		Date dueDate = new Date();
+		Task task = new Task();
+		task.setPatient(testPatient);
+		task.setDescription("Test task");
+		task.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		task.setDueDateDate(dueDate);
+		// Note: dueDateType is null
+		
+		// When: Converting Task to CarePlan
+		CarePlan carePlan = carePlanMapper.toCarePlan(task);
+		
+		// Then: CarePlan should use scheduledPeriod (backward compatibility)
+		assertThat(carePlan, is(notNullValue()));
+		assertThat(carePlan.hasActivity(), is(true));
+		CarePlan.CarePlanActivityDetailComponent detail = carePlan.getActivityFirstRep().getDetail();
+		assertThat(detail.hasScheduled(), is(true));
+		assertThat(detail.hasScheduledPeriod(), is(true));
+		Period period = detail.getScheduledPeriod();
+		assertThat(period.hasEnd(), is(true));
+		assertThat(period.getEnd(), is(dueDate));
+	}
+	
 	private CarePlan createCarePlanWithPractitionerPerformer(String providerUuid) {
 		CarePlan carePlan = new CarePlan();
 		carePlan.setStatus(CarePlan.CarePlanStatus.ACTIVE);
@@ -382,6 +603,62 @@ public class CarePlanMapperTest extends BaseModuleContextSensitiveTest {
 		CarePlan.CarePlanActivityDetailComponent detail = new CarePlan.CarePlanActivityDetailComponent();
 		detail.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
 		detail.setDescription("Test task");
+		
+		activity.setDetail(detail);
+		carePlan.addActivity(activity);
+		
+		return carePlan;
+	}
+	
+	private CarePlan createCarePlanWithScheduledString(String scheduledString, String visitUuid) {
+		CarePlan carePlan = new CarePlan();
+		carePlan.setStatus(CarePlan.CarePlanStatus.ACTIVE);
+		carePlan.setIntent(CarePlan.CarePlanIntent.PLAN);
+		
+		Reference patientRef = new Reference();
+		patientRef.setReference("Patient/" + testPatient.getUuid());
+		carePlan.setSubject(patientRef);
+		
+		CarePlan.CarePlanActivityComponent activity = new CarePlan.CarePlanActivityComponent();
+		CarePlan.CarePlanActivityDetailComponent detail = new CarePlan.CarePlanActivityDetailComponent();
+		detail.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		detail.setDescription("Test task");
+		
+		// Set scheduledString
+		detail.setScheduled(new StringType(scheduledString));
+		
+		// Add encounter extension
+		Extension encounterExtension = new Extension();
+		encounterExtension.setUrl("http://hl7.org/fhir/StructureDefinition/encounter-associatedEncounter");
+		Reference encounterRef = new Reference();
+		encounterRef.setReference("Encounter/" + visitUuid);
+		encounterExtension.setValue(encounterRef);
+		detail.addExtension(encounterExtension);
+		
+		activity.setDetail(detail);
+		carePlan.addActivity(activity);
+		
+		return carePlan;
+	}
+	
+	private CarePlan createCarePlanWithScheduledPeriod(Date endDate) {
+		CarePlan carePlan = new CarePlan();
+		carePlan.setStatus(CarePlan.CarePlanStatus.ACTIVE);
+		carePlan.setIntent(CarePlan.CarePlanIntent.PLAN);
+		
+		Reference patientRef = new Reference();
+		patientRef.setReference("Patient/" + testPatient.getUuid());
+		carePlan.setSubject(patientRef);
+		
+		CarePlan.CarePlanActivityComponent activity = new CarePlan.CarePlanActivityComponent();
+		CarePlan.CarePlanActivityDetailComponent detail = new CarePlan.CarePlanActivityDetailComponent();
+		detail.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		detail.setDescription("Test task");
+		
+		// Set scheduledPeriod
+		Period period = new Period();
+		period.setEnd(endDate);
+		detail.setScheduled(period);
 		
 		activity.setDetail(detail);
 		carePlan.addActivity(activity);
