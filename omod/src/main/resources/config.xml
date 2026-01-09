@@ -19,10 +19,13 @@
 	
 	<require_version>1.11.6</require_version>
 
+	<require_modules>
+		<require_module>org.openmrs.module.fhir2</require_module>
+		<require_module>org.openmrs.module.webservices.rest</require_module>
+	</require_modules>
+	
 	<aware_of_modules>
 		<aware_of_module>org.openmrs.module.legacyui</aware_of_module>
-		<aware_of_module>org.openmrs.module.fhir2</aware_of_module>
-		<aware_of_module>org.openmrs.module.webservices.rest</aware_of_module>
 	</aware_of_modules>
 	
 	

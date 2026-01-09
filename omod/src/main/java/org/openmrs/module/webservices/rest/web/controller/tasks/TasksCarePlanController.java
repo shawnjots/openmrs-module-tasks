@@ -15,6 +15,7 @@ import ca.uhn.fhir.rest.api.MethodOutcome;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CarePlan;
+import org.hl7.fhir.r4.model.IdType;
 import org.openmrs.module.tasks.api.fhir.CarePlanFhirResourceProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
@@ -26,6 +27,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
@@ -33,7 +36,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -69,6 +71,18 @@ public class TasksCarePlanController {
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(encodeResource(bundle));
 	}
 	
+	@GetMapping(path = "/{carePlanId}", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<String> read(@PathVariable("carePlanId") String carePlanId) {
+		CarePlan carePlan = carePlanFhirResourceProvider.read(new IdType("CarePlan", carePlanId));
+		
+		if (carePlan == null) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(MediaType.APPLICATION_JSON)
+			        .body(errorJson("CarePlan not found for ID: " + carePlanId));
+		}
+		
+		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(encodeResource(carePlan));
+	}
+	
 	@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<String> create(@RequestBody String carePlanPayload) {
 		CarePlan carePlan = parseCarePlan(carePlanPayload);
@@ -83,6 +97,17 @@ public class TasksCarePlanController {
 		
 		return ResponseEntity.status(HttpStatus.CREATED).headers(headers).contentType(MediaType.APPLICATION_JSON)
 		        .body(encodeResource(savedCarePlan));
+	}
+	
+	@PutMapping(path = "/{carePlanId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<String> update(@PathVariable("carePlanId") String carePlanId, @RequestBody String carePlanPayload) {
+		CarePlan carePlan = parseCarePlan(carePlanPayload);
+		carePlan.setId(carePlanId);
+		
+		MethodOutcome outcome = carePlanFhirResourceProvider.update(new IdType("CarePlan", carePlanId), carePlan);
+		CarePlan updatedCarePlan = (CarePlan) outcome.getResource();
+		
+		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(encodeResource(updatedCarePlan));
 	}
 	
 	@ExceptionHandler(IllegalArgumentException.class)

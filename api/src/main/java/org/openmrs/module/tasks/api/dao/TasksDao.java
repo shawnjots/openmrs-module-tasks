@@ -42,8 +42,7 @@ public class TasksDao {
 	}
 	
 	public List<Task> getTasksByPatientId(Integer patientId) {
-		return getCurrentSession()
-		        .createQuery("from tasks.Task t where t.patient.patientId = :patientId and t.voided = false", Task.class)
+		return getCurrentSession().createQuery("from tasks.Task t where t.patient.patientId = :patientId", Task.class)
 		        .setParameter("patientId", patientId).getResultList();
 	}
 }

@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
 import java.util.List;
+import java.util.Properties;
 
 /**
  * It is an integration test (extends BaseModuleContextSensitiveTest), which verifies DAO methods
@@ -30,6 +31,14 @@ import java.util.List;
  * rolled back by the end of each test method.
  */
 public class TasksDaoTest extends BaseModuleContextSensitiveTest {
+	
+	@Override
+	public Properties getRuntimeProperties() {
+		Properties props = super.getRuntimeProperties();
+		// Exclude FHIR2 module to avoid cacheInterceptor dependency issues in tests
+		props.setProperty("module.allow_web_admin", "false");
+		return props;
+	}
 	
 	@Autowired
 	TasksDao dao;
@@ -50,7 +59,7 @@ public class TasksDaoTest extends BaseModuleContextSensitiveTest {
 		Patient patient = patientService.getPatient(2);
 		task.setPatient(patient);
 		task.setAssignee(providerService.getProvider(1));
-		task.setAssigneeRoleUuid("role-uuid-1234");
+		task.setAssigneeProviderRoleId(1);
 		
 		//When
 		dao.saveTask(task);
@@ -68,7 +77,7 @@ public class TasksDaoTest extends BaseModuleContextSensitiveTest {
 		assertThat(savedTask, hasProperty("status", is(task.getStatus())));
 		assertThat(savedTask, hasProperty("kind", is(task.getKind())));
 		assertThat(savedTask, hasProperty("assignee", is(task.getAssignee())));
-		assertThat(savedTask, hasProperty("assigneeRoleUuid", is(task.getAssigneeRoleUuid())));
+		assertThat(savedTask, hasProperty("assigneeProviderRoleId", is(task.getAssigneeProviderRoleId())));
 	}
 	
 	@Test
@@ -81,7 +90,7 @@ public class TasksDaoTest extends BaseModuleContextSensitiveTest {
 		task1.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
 		task1.setKind(CarePlan.CarePlanActivityKind.APPOINTMENT);
 		task1.setPatient(patient);
-		task1.setAssigneeRoleUuid("role-uuid-1");
+		task1.setAssigneeProviderRoleId(1);
 		dao.saveTask(task1);
 		
 		Task task2 = new Task();
@@ -100,6 +109,39 @@ public class TasksDaoTest extends BaseModuleContextSensitiveTest {
 		//Then
 		assertThat(tasks.size(), is(2));
 		assertThat(tasks, hasItems(hasProperty("description", is("Task 1")), hasProperty("description", is("Task 2"))));
-		assertThat(tasks, hasItem(hasProperty("assigneeRoleUuid", is("role-uuid-1"))));
+		assertThat(tasks, hasItem(hasProperty("assigneeProviderRoleId", is(1))));
+	}
+	
+	@Test
+	public void getTasksByPatientId_shouldIncludeVoidedTasks() {
+		Patient patient = patientService.getPatient(2);
+		
+		Task task1 = new Task();
+		task1.setDescription("Active Task");
+		task1.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		task1.setKind(CarePlan.CarePlanActivityKind.APPOINTMENT);
+		task1.setPatient(patient);
+		task1.setVoided(false);
+		dao.saveTask(task1);
+		
+		Task task2 = new Task();
+		task2.setDescription("Voided Task");
+		task2.setStatus(CarePlan.CarePlanActivityStatus.CANCELLED);
+		task2.setKind(CarePlan.CarePlanActivityKind.APPOINTMENT);
+		task2.setPatient(patient);
+		task2.setVoided(true);
+		task2.setDateVoided(new java.util.Date());
+		dao.saveTask(task2);
+		
+		Context.flushSession();
+		Context.clearSession();
+		
+		List<Task> tasks = dao.getTasksByPatientId(patient.getId());
+		
+		assertThat(tasks.size(), is(2));
+		assertThat(tasks,
+		    hasItems(hasProperty("description", is("Active Task")), hasProperty("description", is("Voided Task"))));
+		assertThat(tasks, hasItem(hasProperty("voided", is(true))));
+		assertThat(tasks, hasItem(hasProperty("voided", is(false))));
 	}
 }
