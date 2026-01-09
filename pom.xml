@@ -17,6 +17,12 @@
 
 	<url>https://wiki.openmrs.org/x/FQ4z</url>
 
+    <developers>
+        <developer>
+            <name>Brandon Istenes</name>
+        </developer>
+    </developers>
+
 	<scm>
 		<connection>scm:git:git@github.com:openmrs/openmrs-module-tasks.git</connection>
 		<developerConnection>scm:git:git@github.com:openmrs/openmrs-module-tasks.git</developerConnection>

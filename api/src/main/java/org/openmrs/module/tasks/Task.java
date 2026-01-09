@@ -78,6 +78,10 @@ public class Task extends BaseOpenmrsData {
 	@Column(name = "kind", length = 50)
 	private CarePlan.CarePlanActivityKind kind;
 	
+	@Enumerated(EnumType.STRING)
+	@Column(name = "priority", length = 50)
+	private Priority priority;
+	
 	@Override
 	public Integer getId() {
 		return id;
@@ -176,5 +180,13 @@ public class Task extends BaseOpenmrsData {
 	
 	public void setRationale(String rationale) {
 		this.rationale = rationale;
+	}
+	
+	public Priority getPriority() {
+		return priority;
+	}
+	
+	public void setPriority(Priority priority) {
+		this.priority = priority;
 	}
 }

@@ -28,6 +28,7 @@ import org.openmrs.api.ProviderService;
 import org.openmrs.api.VisitService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.tasks.DueDateType;
+import org.openmrs.module.tasks.Priority;
 import org.openmrs.module.fhir2.api.translators.PatientReferenceTranslator;
 import org.openmrs.module.fhir2.api.translators.PractitionerReferenceTranslator;
 import org.openmrs.module.tasks.Task;
@@ -499,6 +500,196 @@ public class CarePlanMapperTest extends BaseModuleContextSensitiveTest {
 		carePlan.addActivity(activity);
 		
 		return carePlan;
+	}
+	
+	private CarePlan createCarePlanWithPriorityExtension(String priorityValue) {
+		CarePlan carePlan = new CarePlan();
+		carePlan.setStatus(CarePlan.CarePlanStatus.ACTIVE);
+		carePlan.setIntent(CarePlan.CarePlanIntent.PLAN);
+		
+		Reference patientRef = new Reference();
+		patientRef.setReference("Patient/" + testPatient.getUuid());
+		carePlan.setSubject(patientRef);
+		
+		CarePlan.CarePlanActivityComponent activity = new CarePlan.CarePlanActivityComponent();
+		CarePlan.CarePlanActivityDetailComponent detail = new CarePlan.CarePlanActivityDetailComponent();
+		detail.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		detail.setDescription("Test task");
+		
+		org.hl7.fhir.r4.model.Extension priorityExtension = new org.hl7.fhir.r4.model.Extension();
+		priorityExtension.setUrl("http://openmrs.org/fhir/StructureDefinition/activity-priority");
+		priorityExtension.setValue(new org.hl7.fhir.r4.model.CodeType(priorityValue));
+		detail.addExtension(priorityExtension);
+		
+		activity.setDetail(detail);
+		carePlan.addActivity(activity);
+		
+		return carePlan;
+	}
+	
+	@Test
+	public void toCarePlan_withHighPriority_shouldIncludePriorityExtension() {
+		// Given: A Task with HIGH priority
+		Task task = new Task();
+		task.setPatient(testPatient);
+		task.setDescription("High priority task");
+		task.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		task.setPriority(Priority.HIGH);
+		
+		// When: Converting Task to CarePlan
+		CarePlan carePlan = carePlanMapper.toCarePlan(task);
+		
+		// Then: CarePlan should include priority extension with value "high"
+		assertThat(carePlan, is(notNullValue()));
+		assertThat(carePlan.hasActivity(), is(true));
+		CarePlan.CarePlanActivityDetailComponent detail = carePlan.getActivityFirstRep().getDetail();
+		assertThat(detail.hasExtension(), is(true));
+		
+		org.hl7.fhir.r4.model.Extension priorityExtension = detail
+		        .getExtensionByUrl("http://openmrs.org/fhir/StructureDefinition/activity-priority");
+		assertThat(priorityExtension, is(notNullValue()));
+		assertThat(priorityExtension.getValue(), instanceOf(org.hl7.fhir.r4.model.CodeType.class));
+		org.hl7.fhir.r4.model.CodeType priorityValue = (org.hl7.fhir.r4.model.CodeType) priorityExtension.getValue();
+		assertThat(priorityValue.getValue(), is("high"));
+	}
+	
+	@Test
+	public void toCarePlan_withMediumPriority_shouldIncludePriorityExtension() {
+		// Given: A Task with MEDIUM priority
+		Task task = new Task();
+		task.setPatient(testPatient);
+		task.setDescription("Medium priority task");
+		task.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		task.setPriority(Priority.MEDIUM);
+		
+		// When: Converting Task to CarePlan
+		CarePlan carePlan = carePlanMapper.toCarePlan(task);
+		
+		// Then: CarePlan should include priority extension with value "medium"
+		assertThat(carePlan, is(notNullValue()));
+		assertThat(carePlan.hasActivity(), is(true));
+		CarePlan.CarePlanActivityDetailComponent detail = carePlan.getActivityFirstRep().getDetail();
+		assertThat(detail.hasExtension(), is(true));
+		
+		org.hl7.fhir.r4.model.Extension priorityExtension = detail
+		        .getExtensionByUrl("http://openmrs.org/fhir/StructureDefinition/activity-priority");
+		assertThat(priorityExtension, is(notNullValue()));
+		assertThat(priorityExtension.getValue(), instanceOf(org.hl7.fhir.r4.model.CodeType.class));
+		org.hl7.fhir.r4.model.CodeType priorityValue = (org.hl7.fhir.r4.model.CodeType) priorityExtension.getValue();
+		assertThat(priorityValue.getValue(), is("medium"));
+	}
+	
+	@Test
+	public void toCarePlan_withLowPriority_shouldIncludePriorityExtension() {
+		// Given: A Task with LOW priority
+		Task task = new Task();
+		task.setPatient(testPatient);
+		task.setDescription("Low priority task");
+		task.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		task.setPriority(Priority.LOW);
+		
+		// When: Converting Task to CarePlan
+		CarePlan carePlan = carePlanMapper.toCarePlan(task);
+		
+		// Then: CarePlan should include priority extension with value "low"
+		assertThat(carePlan, is(notNullValue()));
+		assertThat(carePlan.hasActivity(), is(true));
+		CarePlan.CarePlanActivityDetailComponent detail = carePlan.getActivityFirstRep().getDetail();
+		assertThat(detail.hasExtension(), is(true));
+		
+		org.hl7.fhir.r4.model.Extension priorityExtension = detail
+		        .getExtensionByUrl("http://openmrs.org/fhir/StructureDefinition/activity-priority");
+		assertThat(priorityExtension, is(notNullValue()));
+		assertThat(priorityExtension.getValue(), instanceOf(org.hl7.fhir.r4.model.CodeType.class));
+		org.hl7.fhir.r4.model.CodeType priorityValue = (org.hl7.fhir.r4.model.CodeType) priorityExtension.getValue();
+		assertThat(priorityValue.getValue(), is("low"));
+	}
+	
+	@Test
+	public void toCarePlan_withNoPriority_shouldNotIncludePriorityExtension() {
+		// Given: A Task without priority
+		Task task = new Task();
+		task.setPatient(testPatient);
+		task.setDescription("Task without priority");
+		task.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		task.setPriority(null);
+		
+		// When: Converting Task to CarePlan
+		CarePlan carePlan = carePlanMapper.toCarePlan(task);
+		
+		// Then: CarePlan should not include priority extension
+		assertThat(carePlan, is(notNullValue()));
+		assertThat(carePlan.hasActivity(), is(true));
+		CarePlan.CarePlanActivityDetailComponent detail = carePlan.getActivityFirstRep().getDetail();
+		
+		org.hl7.fhir.r4.model.Extension priorityExtension = detail
+		        .getExtensionByUrl("http://openmrs.org/fhir/StructureDefinition/activity-priority");
+		assertThat(priorityExtension, is(nullValue()));
+	}
+	
+	@Test
+	public void applyCarePlanToTask_withHighPriorityExtension_shouldSetHighPriority() {
+		// Given: A CarePlan with high priority extension
+		CarePlan carePlan = createCarePlanWithPriorityExtension("high");
+		Task task = new Task();
+		
+		// When: Converting CarePlan to Task
+		Task result = carePlanMapper.applyCarePlanToTask(task, carePlan, testPatient, null, null);
+		
+		// Then: Task should have HIGH priority
+		assertThat(result.getPriority(), is(Priority.HIGH));
+	}
+	
+	@Test
+	public void applyCarePlanToTask_withMediumPriorityExtension_shouldSetMediumPriority() {
+		// Given: A CarePlan with medium priority extension
+		CarePlan carePlan = createCarePlanWithPriorityExtension("medium");
+		Task task = new Task();
+		
+		// When: Converting CarePlan to Task
+		Task result = carePlanMapper.applyCarePlanToTask(task, carePlan, testPatient, null, null);
+		
+		// Then: Task should have MEDIUM priority
+		assertThat(result.getPriority(), is(Priority.MEDIUM));
+	}
+	
+	@Test
+	public void applyCarePlanToTask_withLowPriorityExtension_shouldSetLowPriority() {
+		// Given: A CarePlan with low priority extension
+		CarePlan carePlan = createCarePlanWithPriorityExtension("low");
+		Task task = new Task();
+		
+		// When: Converting CarePlan to Task
+		Task result = carePlanMapper.applyCarePlanToTask(task, carePlan, testPatient, null, null);
+		
+		// Then: Task should have LOW priority
+		assertThat(result.getPriority(), is(Priority.LOW));
+	}
+	
+	@Test
+	public void applyCarePlanToTask_withNoPriorityExtension_shouldHaveNullPriority() {
+		// Given: A CarePlan without priority extension
+		CarePlan carePlan = createCarePlanWithoutPerformers();
+		Task task = new Task();
+		
+		// When: Converting CarePlan to Task
+		Task result = carePlanMapper.applyCarePlanToTask(task, carePlan, testPatient, null, null);
+		
+		// Then: Task should have null priority
+		assertThat(result.getPriority(), is(nullValue()));
+	}
+	
+	@Test
+	public void applyCarePlanToTask_withUpperCasePriorityExtension_shouldSetPriority() {
+		// Given: A CarePlan with uppercase priority extension (HIGH instead of high)
+		CarePlan carePlan = createCarePlanWithPriorityExtension("HIGH");
+		Task task = new Task();
+		
+		// When: Converting CarePlan to Task
+		Task result = carePlanMapper.applyCarePlanToTask(task, carePlan, testPatient, null, null);
+		
+		// Then: Task should have HIGH priority (case-insensitive)
+		assertThat(result.getPriority(), is(Priority.HIGH));
 	}
 	
 	@Test

@@ -35,6 +35,7 @@ import org.openmrs.api.ProviderService;
 import org.openmrs.api.VisitService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.tasks.DueDateType;
+import org.openmrs.module.tasks.Priority;
 import org.openmrs.module.fhir2.api.translators.PatientReferenceTranslator;
 import org.openmrs.module.fhir2.api.translators.PractitionerReferenceTranslator;
 import org.openmrs.module.tasks.Task;
@@ -63,7 +64,9 @@ public class CarePlanMapper {
 	private static final String ENCOUNTER_EXTENSION_URL = "http://hl7.org/fhir/StructureDefinition/encounter-associatedEncounter";
 	
 	private static final String ACTIVITY_DUE_KIND_EXTENSION_URL = "http://openmrs.org/fhir/StructureDefinition/activity-dueKind";
-	
+
+	private static final String ACTIVITY_PRIORITY_EXTENSION_URL = "http://openmrs.org/fhir/StructureDefinition/activity-priority";
+
 	private static final Map<CarePlanActivityKind, String> KIND_TO_RESOURCE_TYPE = new EnumMap<>(CarePlanActivityKind.class);
 	
 	static {
@@ -230,7 +233,15 @@ public class CarePlanMapper {
 			dueKindExtension.setValue(new org.hl7.fhir.r4.model.CodeType(dueKindValue));
 			detail.addExtension(dueKindExtension);
 		}
-		
+
+		// Add priority extension if we have a priority
+		if (task.getPriority() != null) {
+			Extension priorityExtension = new Extension();
+			priorityExtension.setUrl(ACTIVITY_PRIORITY_EXTENSION_URL);
+			priorityExtension.setValue(new org.hl7.fhir.r4.model.CodeType(task.getPriority().name().toLowerCase()));
+			detail.addExtension(priorityExtension);
+		}
+
 		if (!detail.isEmpty()) {
 			activity.setDetail(detail);
 		}
@@ -279,7 +290,8 @@ public class CarePlanMapper {
 		task.setDueDateType(null);
 		task.setDueDateReferenceVisit(null);
 		task.setRationale(null);
-		
+		task.setPriority(null);
+
 		if (carePlan.hasActivity() && !carePlan.getActivity().isEmpty()) {
 			CarePlanActivityComponent activity = carePlan.getActivityFirstRep();
 			
@@ -307,7 +319,8 @@ public class CarePlanMapper {
 				// Handle due date: read from activity-dueKind extension first
 				String dueKindValue = null;
 				Visit visitFromExtension = null;
-				
+				String priorityValue = null;
+
 				if (detail.hasExtension()) {
 					for (Extension extension : detail.getExtension()) {
 						if (ACTIVITY_DUE_KIND_EXTENSION_URL.equals(extension.getUrl()) && extension.hasValue()) {
@@ -323,10 +336,26 @@ public class CarePlanMapper {
 								Reference encounterRef = (Reference) value;
 								visitFromExtension = resolveVisitFromEncounterReference(encounterRef);
 							}
+						} else if (ACTIVITY_PRIORITY_EXTENSION_URL.equals(extension.getUrl()) && extension.hasValue()) {
+							IBaseDatatype value = extension.getValue();
+							if (value instanceof org.hl7.fhir.r4.model.CodeType) {
+								priorityValue = ((org.hl7.fhir.r4.model.CodeType) value).getValue();
+							} else if (value instanceof StringType) {
+								priorityValue = ((StringType) value).getValue();
+							}
 						}
 					}
 				}
-				
+
+				// Set priority based on extension value
+				if (priorityValue != null) {
+					try {
+						task.setPriority(Priority.valueOf(priorityValue.toUpperCase()));
+					} catch (IllegalArgumentException e) {
+						log.warn("Unknown priority value: {}", priorityValue);
+					}
+				}
+
 				// Set due date type based on extension
 				if ("this-visit".equals(dueKindValue)) {
 					task.setDueDateType(DueDateType.THIS_VISIT);

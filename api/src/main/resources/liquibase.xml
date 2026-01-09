@@ -34,6 +34,7 @@
 			<column name="provider_id" type="int"/>
 			<column name="status" type="varchar(50)"/>
 			<column name="kind" type="varchar(50)"/>
+			<column name="priority" type="varchar(50)"/>
 			<column name="creator" type="int">
 				<constraints nullable="false"/>
 			</column>
