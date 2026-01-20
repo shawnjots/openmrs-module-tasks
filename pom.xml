@@ -152,6 +152,12 @@
                 <artifactId>mockito-inline</artifactId>
                 <version>3.12.4</version>
             </dependency>
+            <dependency>
+				<groupId>net.bytebuddy</groupId>
+				<artifactId>byte-buddy</artifactId>
+				<version>1.17.4</version>
+				<scope>test</scope>
+			</dependency>
             <!-- fhir2-api dependency management - use fhir2-api instead of bundling HAPI FHIR directly -->
             <dependency>
                 <groupId>org.openmrs.module</groupId>
