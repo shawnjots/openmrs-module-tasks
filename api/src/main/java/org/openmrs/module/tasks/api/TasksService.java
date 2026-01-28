@@ -12,9 +12,9 @@ package org.openmrs.module.tasks.api;
 import org.openmrs.annotation.Authorized;
 import org.openmrs.api.APIException;
 import org.openmrs.api.OpenmrsService;
-import org.openmrs.module.tasks.TasksConfig;
+import org.openmrs.module.tasks.SystemTask;
 import org.openmrs.module.tasks.Task;
-import org.springframework.transaction.annotation.Transactional;
+import org.openmrs.module.tasks.TasksConfig;
 
 import java.util.List;
 
@@ -33,7 +33,6 @@ public interface TasksService extends OpenmrsService {
 	 * @throws APIException
 	 */
 	@Authorized(TasksConfig.TASKS_VIEW_PRIVILEGE)
-	@Transactional(readOnly = true)
 	Task getTaskByUuid(String uuid) throws APIException;
 	
 	/**
@@ -45,7 +44,6 @@ public interface TasksService extends OpenmrsService {
 	 * @throws APIException
 	 */
 	@Authorized(TasksConfig.TASKS_MANAGE_PRIVILEGE)
-	@Transactional
 	Task saveTask(Task task) throws APIException;
 	
 	/**
@@ -57,7 +55,6 @@ public interface TasksService extends OpenmrsService {
 	 * @throws APIException
 	 */
 	@Authorized(TasksConfig.TASKS_VIEW_PRIVILEGE)
-	@Transactional(readOnly = true)
 	List<Task> getTasksByPatientId(Integer patientId) throws APIException;
 	
 	/**
@@ -68,7 +65,6 @@ public interface TasksService extends OpenmrsService {
 	 * @throws APIException
 	 */
 	@Authorized(TasksConfig.TASKS_DELETE_PRIVILEGE)
-	@Transactional
 	void voidTask(Task task, String voidReason) throws APIException;
 	
 	/**
@@ -78,6 +74,45 @@ public interface TasksService extends OpenmrsService {
 	 * @throws APIException
 	 */
 	@Authorized(TasksConfig.TASKS_DELETE_PRIVILEGE)
-	@Transactional
 	void purgeTask(Task task) throws APIException;
+	
+	/**
+	 * Returns a system task by uuid.
+	 * 
+	 * @param uuid the uuid of the system task
+	 * @return the system task, or null if not found
+	 * @throws APIException
+	 */
+	@Authorized(TasksConfig.TASKS_VIEW_PRIVILEGE)
+	SystemTask getSystemTaskByUuid(String uuid) throws APIException;
+	
+	/**
+	 * Returns all system tasks, optionally including retired ones.
+	 * 
+	 * @param includeRetired whether to include retired system tasks
+	 * @return list of system tasks
+	 * @throws APIException
+	 */
+	@Authorized(TasksConfig.TASKS_VIEW_PRIVILEGE)
+	List<SystemTask> getAllSystemTasks(boolean includeRetired) throws APIException;
+	
+	/**
+	 * Saves a system task. Used by the CSV loader to persist system tasks.
+	 * 
+	 * @param systemTask the system task to save
+	 * @return the saved system task
+	 * @throws APIException
+	 */
+	@Authorized(TasksConfig.TASKS_MANAGE_PRIVILEGE)
+	SystemTask saveSystemTask(SystemTask systemTask) throws APIException;
+	
+	/**
+	 * Retires a system task with the provided reason.
+	 * 
+	 * @param systemTask the system task to retire
+	 * @param retireReason the reason for retiring
+	 * @throws APIException
+	 */
+	@Authorized(TasksConfig.TASKS_MANAGE_PRIVILEGE)
+	void retireSystemTask(SystemTask systemTask, String retireReason) throws APIException;
 }

@@ -9,9 +9,14 @@
  */
 package org.openmrs.module.tasks.api.dao;
 
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
+
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.openmrs.api.db.hibernate.HibernateUtil;
+import org.openmrs.module.tasks.SystemTask;
 import org.openmrs.module.tasks.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -44,5 +49,29 @@ public class TasksDao {
 	public List<Task> getTasksByPatientId(Integer patientId) {
 		return getCurrentSession().createQuery("from tasks.Task t where t.patient.patientId = :patientId", Task.class)
 		        .setParameter("patientId", patientId).getResultList();
+	}
+	
+	public SystemTask getSystemTaskByUuid(String uuid) {
+		return HibernateUtil.getUniqueEntityByUUID(sessionFactory, SystemTask.class, uuid);
+	}
+	
+	public List<SystemTask> getAllSystemTasks(boolean includeRetired) {
+		Session session = getCurrentSession();
+		CriteriaBuilder cb = session.getCriteriaBuilder();
+		CriteriaQuery<SystemTask> cq = cb.createQuery(SystemTask.class);
+		Root<SystemTask> root = cq.from(SystemTask.class);
+		
+		cq.orderBy(cb.asc(root.get("name")));
+		
+		if (!includeRetired) {
+			cq.where(cb.isFalse(root.get("retired")));
+		}
+		
+		return session.createQuery(cq).getResultList();
+	}
+	
+	public SystemTask saveSystemTask(SystemTask systemTask) {
+		getCurrentSession().saveOrUpdate(systemTask);
+		return systemTask;
 	}
 }

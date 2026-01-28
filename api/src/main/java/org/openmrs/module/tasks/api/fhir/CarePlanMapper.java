@@ -36,9 +36,11 @@ import org.openmrs.api.VisitService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.tasks.DueDateType;
 import org.openmrs.module.tasks.Priority;
+import org.openmrs.module.tasks.SystemTask;
 import org.openmrs.module.fhir2.api.translators.PatientReferenceTranslator;
 import org.openmrs.module.fhir2.api.translators.PractitionerReferenceTranslator;
 import org.openmrs.module.tasks.Task;
+import org.openmrs.module.tasks.api.TasksService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,19 +58,21 @@ import java.util.Optional;
  */
 @Component("tasks.CarePlanMapper")
 public class CarePlanMapper {
-	
+
 	private static final Logger log = LoggerFactory.getLogger(CarePlanMapper.class);
-	
+
 	private static final String PRACTITIONER_ROLE_TYPE = "PractitionerRole";
-	
+
 	private static final String ENCOUNTER_EXTENSION_URL = "http://hl7.org/fhir/StructureDefinition/encounter-associatedEncounter";
-	
+
 	private static final String ACTIVITY_DUE_KIND_EXTENSION_URL = "http://openmrs.org/fhir/StructureDefinition/activity-dueKind";
 
 	private static final String ACTIVITY_PRIORITY_EXTENSION_URL = "http://openmrs.org/fhir/StructureDefinition/activity-priority";
 
+	private static final String PLAN_DEFINITION_RESOURCE_TYPE = "PlanDefinition";
+
 	private static final Map<CarePlanActivityKind, String> KIND_TO_RESOURCE_TYPE = new EnumMap<>(CarePlanActivityKind.class);
-	
+
 	static {
 		KIND_TO_RESOURCE_TYPE.put(CarePlanActivityKind.APPOINTMENT, "Appointment");
 		KIND_TO_RESOURCE_TYPE.put(CarePlanActivityKind.COMMUNICATIONREQUEST, "CommunicationRequest");
@@ -79,79 +83,84 @@ public class CarePlanMapper {
 		KIND_TO_RESOURCE_TYPE.put(CarePlanActivityKind.TASK, "Task");
 		KIND_TO_RESOURCE_TYPE.put(CarePlanActivityKind.VISIONPRESCRIPTION, "VisionPrescription");
 	}
-	
+
 	private final PatientReferenceTranslator patientReferenceTranslator;
-	
+
 	private final PractitionerReferenceTranslator<Provider> practitionerReferenceTranslator;
-	
+
 	@Autowired
 	public CarePlanMapper(PatientReferenceTranslator patientReferenceTranslator,
 	    PractitionerReferenceTranslator<Provider> practitionerReferenceTranslator) {
 		this.patientReferenceTranslator = patientReferenceTranslator;
 		this.practitionerReferenceTranslator = practitionerReferenceTranslator;
 	}
-	
+
 	/**
 	 * Converts a Task entity to a FHIR CarePlan resource.
-	 * 
+	 *
 	 * @param task the Task entity
 	 * @return the FHIR CarePlan resource
 	 */
 	public CarePlan toCarePlan(Task task) {
 		CarePlan carePlan = new CarePlan();
-		
+
 		carePlan.setId(task.getUuid());
-		
+
 		if (task.getStatus() == CarePlan.CarePlanActivityStatus.COMPLETED) {
 			carePlan.setStatus(CarePlan.CarePlanStatus.COMPLETED);
 		} else {
 			carePlan.setStatus(CarePlan.CarePlanStatus.ACTIVE);
 		}
-		
+
 		carePlan.setIntent(CarePlan.CarePlanIntent.PLAN);
-		
+
+		// Add instantiatesCanonical if this task was created from a system task template
+		if (task.getSystemTask() != null && task.getSystemTask().getUuid() != null) {
+			carePlan.addInstantiatesCanonical(PLAN_DEFINITION_RESOURCE_TYPE + "/" + task.getSystemTask().getUuid());
+		}
+
 		if (task.getPatient() != null) {
 			carePlan.setSubject(patientReferenceTranslator.toFhirResource(task.getPatient()));
 		}
-		
+
 		Reference authorRef = buildAuthorReference(task.getCreator());
 		if (authorRef != null) {
 			carePlan.setAuthor(authorRef);
 		}
-		
+
 		if (task.getDateCreated() != null) {
 			carePlan.setCreated(task.getDateCreated());
 		}
-		
+
 		CarePlanActivityComponent activity = new CarePlanActivityComponent();
 		Reference reference = buildActivityReference(task.getKind());
 		if (reference != null) {
 			activity.setReference(reference);
 		}
-		
+
 		CarePlanActivityDetailComponent detail = new CarePlanActivityDetailComponent();
-		
+
 		if (Boolean.TRUE.equals(task.getVoided())) {
 			detail.setStatus(CarePlan.CarePlanActivityStatus.CANCELLED);
 		} else if (task.getStatus() != null) {
 			detail.setStatus(task.getStatus());
 		}
-		
+
 		if (task.getDescription() != null) {
 			detail.setDescription(task.getDescription());
 		}
-		
+
 		if (StringUtils.isNotBlank(task.getRationale())) {
 			carePlan.setDescription(task.getRationale());
 		}
-		
+
 		if (task.getAssignee() != null) {
 			Reference performerRef = practitionerReferenceTranslator.toFhirResource(task.getAssignee());
 			if (performerRef != null) {
 				detail.addPerformer(performerRef);
 			}
 		}
-		
+
 		if (task.getAssigneeProviderRoleId() != null) {
 			String roleUuid = resolveProviderRoleUuid(task.getAssigneeProviderRoleId());
 			if (StringUtils.isNotBlank(roleUuid)) {
@@ -161,11 +170,11 @@ public class CarePlanMapper {
 				}
 			}
 		}
-		
+
 		// Handle due date
 		Period scheduledPeriod = new Period();
 		String dueKindValue = null;
-		
+
 		if (task.getDueDateType() == DueDateType.DATE && task.getDueDate() != null) {
 			// DATE type: start = end = specific date
 			scheduledPeriod.setStart(task.getDueDate());
@@ -174,7 +183,7 @@ public class CarePlanMapper {
 		} else if (task.getDueDateType() == DueDateType.THIS_VISIT || task.getDueDateType() == DueDateType.NEXT_VISIT) {
 			// Visit-based types: end = visit end date (when available)
 			dueKindValue = task.getDueDateType() == DueDateType.THIS_VISIT ? "this-visit" : "next-visit";
-			
+
 			Visit referenceVisit = task.getDueDateReferenceVisit();
 			if (referenceVisit != null) {
 				// Add encounter extension for reference visit
@@ -194,9 +203,9 @@ public class CarePlanMapper {
 				} else if (task.getDateCreated() != null) {
 					scheduledPeriod.setStart(task.getDateCreated());
 				}
-				
+
 				Date visitEndDate = null;
-				
+
 				if (task.getDueDateType() == DueDateType.THIS_VISIT) {
 					// For THIS_VISIT, the reference visit IS the due visit
 					visitEndDate = task.getDueDateReferenceVisit().getStopDatetime();
@@ -214,18 +223,18 @@ public class CarePlanMapper {
 						}
 					}
 				}
-				
+
 				if (visitEndDate != null) {
 					scheduledPeriod.setEnd(visitEndDate);
 				}
 			}
 		}
-		
+
 		// Always set scheduledPeriod (may have no end for ongoing visits, but should have start)
 		if (scheduledPeriod.hasStart() || scheduledPeriod.hasEnd() || dueKindValue != null) {
 			detail.setScheduled(scheduledPeriod);
 		}
-		
+
 		// Add due-kind extension if we have a due date type
 		if (dueKindValue != null) {
 			Extension dueKindExtension = new Extension();
@@ -245,15 +254,15 @@ public class CarePlanMapper {
 		if (!detail.isEmpty()) {
 			activity.setDetail(detail);
 		}
-		
+
 		carePlan.addActivity(activity);
-		
+
 		return carePlan;
 	}
-	
+
 	/**
 	 * Converts a FHIR CarePlan resource to a Task entity.
-	 * 
+	 *
 	 * @param carePlan the FHIR CarePlan resource
 	 * @param patient the Patient entity (must be resolved separately)
 	 * @param assignee the Provider entity for assignee (must be resolved separately, can be null)
@@ -263,10 +272,10 @@ public class CarePlanMapper {
 	public Task toTask(CarePlan carePlan, Patient patient, Provider assignee, String assigneeRoleUuid) {
 		return applyCarePlanToTask(new Task(), carePlan, patient, assignee, assigneeRoleUuid);
 	}
-	
+
 	/**
 	 * Applies values from a CarePlan resource to the provided Task.
-	 * 
+	 *
 	 * @param task the Task to update; if {@code null}, a new Task is created
 	 * @param carePlan the source CarePlan
 	 * @param patient the patient associated with the task
@@ -278,11 +287,11 @@ public class CarePlanMapper {
 		if (task == null) {
 			task = new Task();
 		}
-		
+
 		if (carePlan.hasId()) {
 			task.setUuid(carePlan.getId());
 		}
-		
+
 		task.setPatient(patient);
 		task.setAssignee(null);
 		task.setAssigneeProviderRoleId(null);
@@ -291,19 +300,35 @@ public class CarePlanMapper {
 		task.setDueDateReferenceVisit(null);
 		task.setRationale(null);
 		task.setPriority(null);
+		task.setSystemTask(null);
+
+		// Parse instantiatesCanonical to set systemTask reference
+		if (carePlan.hasInstantiatesCanonical()) {
+			for (org.hl7.fhir.r4.model.CanonicalType canonical : carePlan.getInstantiatesCanonical()) {
+				String value = canonical.getValue();
+				if (StringUtils.isNotBlank(value) && value.startsWith(PLAN_DEFINITION_RESOURCE_TYPE + "/")) {
+					String systemTaskUuid = value.substring((PLAN_DEFINITION_RESOURCE_TYPE + "/").length());
+					SystemTask systemTask = resolveSystemTask(systemTaskUuid);
+					if (systemTask != null) {
+						task.setSystemTask(systemTask);
+						break;
+					}
+				}
+			}
+		}
 
 		if (carePlan.hasActivity() && !carePlan.getActivity().isEmpty()) {
 			CarePlanActivityComponent activity = carePlan.getActivityFirstRep();
-			
+
 			Optional.ofNullable(resolveKindFromActivity(activity)).ifPresent(task::setKind);
-			
+
 			if (activity.hasDetail()) {
 				CarePlanActivityDetailComponent detail = activity.getDetail();
-				
+
 				if (detail.hasStatus()) {
 					CarePlan.CarePlanActivityStatus status = detail.getStatus();
 					task.setStatus(status);
-					
+
 					if (status == CarePlan.CarePlanActivityStatus.CANCELLED) {
 						task.setVoided(true);
 						if (task.getDateVoided() == null) {
@@ -311,11 +336,11 @@ public class CarePlanMapper {
 						}
 					}
 				}
-				
+
 				if (detail.hasDescription()) {
 					task.setDescription(detail.getDescription());
 				}
-				
+
 				// Handle due date: read from activity-dueKind extension first
 				String dueKindValue = null;
 				Visit visitFromExtension = null;
@@ -370,7 +395,7 @@ public class CarePlanMapper {
 				} else if ("date".equals(dueKindValue)) {
 					task.setDueDateType(DueDateType.DATE);
 				}
-				
+
 				// Read due date from scheduledPeriod or other scheduled types
 				if (detail.hasScheduledPeriod() && detail.getScheduledPeriod().hasEnd()) {
 					task.setDueDate(detail.getScheduledPeriod().getEnd());
@@ -406,7 +431,7 @@ public class CarePlanMapper {
 						}
 					}
 				}
-				
+
 				if (detail.hasPerformer()) {
 					for (Reference performer : detail.getPerformer()) {
 						String resourceType = getReferenceType(performer);
@@ -428,7 +453,7 @@ public class CarePlanMapper {
 				}
 			}
 		}
-		
+
 		if (task.getAssignee() == null && assignee != null) {
 			task.setAssignee(assignee);
 		}
@@ -441,15 +466,15 @@ public class CarePlanMapper {
 		if (carePlan.hasDescription()) {
 			task.setRationale(StringUtils.defaultIfBlank(carePlan.getDescription(), null));
 		}
-		
+
 		return task;
 	}
-	
+
 	private Reference buildActivityReference(CarePlanActivityKind kind) {
 		if (kind == null || kind == CarePlanActivityKind.NULL) {
 			return null;
 		}
-		
+
 		String resourceType = KIND_TO_RESOURCE_TYPE.get(kind);
 		if (resourceType == null) {
 			resourceType = toPascalCase(kind.getDisplay());
@@ -457,12 +482,12 @@ public class CarePlanMapper {
 		if (StringUtils.isBlank(resourceType)) {
 			return null;
 		}
-		
+
 		Reference reference = new Reference();
 		reference.setType(resourceType);
 		return reference;
 	}
-	
+
 	private Reference buildPractitionerRoleReference(String roleUuid) {
 		if (StringUtils.isBlank(roleUuid)) {
 			return null;
@@ -473,12 +498,12 @@ public class CarePlanMapper {
 		resolveProviderRoleDisplay(roleUuid).ifPresent(reference::setDisplay);
 		return reference;
 	}
-	
+
 	private Reference buildAuthorReference(User creator) {
 		if (creator == null) {
 			return null;
 		}
-		
+
 		try {
 			ProviderService providerService = Context.getProviderService();
 			Person person = creator.getPerson();
@@ -496,7 +521,7 @@ public class CarePlanMapper {
 		catch (Exception ex) {
 			log.debug("Unable to resolve Provider for User {}, using display name only", creator.getUuid(), ex);
 		}
-		
+
 		Reference authorRef = new Reference();
 		Person person = creator.getPerson();
 		if (person != null && person.getPersonName() != null) {
@@ -508,10 +533,10 @@ public class CarePlanMapper {
 		if (!authorRef.hasDisplay()) {
 			authorRef.setDisplay(creator.getUsername());
 		}
-		
+
 		return authorRef;
 	}
-	
+
 	private CarePlanActivityKind resolveKindFromActivity(CarePlanActivityComponent activity) {
 		if (activity.hasReference() && activity.getReference().hasType()) {
 			String type = activity.getReference().getType();
@@ -523,14 +548,14 @@ public class CarePlanMapper {
 				        .orElseGet(() -> fromTypeString(type));
 			}
 		}
-		
+
 		if (activity.hasDetail() && activity.getDetail().hasKind()) {
 			return activity.getDetail().getKind();
 		}
-		
+
 		return null;
 	}
-	
+
 	private CarePlanActivityKind fromTypeString(String type) {
 		String normalized = type.replace("-", "").replace("_", "").toUpperCase(Locale.ROOT);
 		for (CarePlanActivityKind kind : CarePlanActivityKind.values()) {
@@ -543,7 +568,7 @@ public class CarePlanMapper {
 		}
 		return null;
 	}
-	
+
 	private String toPascalCase(String value) {
 		if (StringUtils.isBlank(value)) {
 			return null;
@@ -558,7 +583,7 @@ public class CarePlanMapper {
 		}
 		return builder.toString();
 	}
-	
+
 	private String getReferenceType(Reference reference) {
 		if (reference == null) {
 			return null;
@@ -579,7 +604,7 @@ public class CarePlanMapper {
 		}
 		return null;
 	}
-	
+
 	private String extractRoleUuid(Reference reference) {
 		if (reference == null) {
 			return null;
@@ -592,7 +617,7 @@ public class CarePlanMapper {
 		}
 		return null;
 	}
-	
+
 	private Optional<String> resolveProviderRoleDisplay(String providerRoleUuid) {
 		if (StringUtils.isBlank(providerRoleUuid)) {
 			return Optional.empty();
@@ -609,10 +634,10 @@ public class CarePlanMapper {
 		}
 		return Optional.empty();
 	}
-	
+
 	/**
 	 * Resolves a ProviderRole ID from a ProviderRole UUID.
-	 * 
+	 *
 	 * @param providerRoleUuid the ProviderRole UUID
 	 * @return the ProviderRole ID, or null if not found
 	 */
@@ -632,10 +657,10 @@ public class CarePlanMapper {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Resolves a ProviderRole UUID from a ProviderRole ID.
-	 * 
+	 *
 	 * @param providerRoleId the ProviderRole ID
 	 * @return the ProviderRole UUID, or null if not found
 	 */
@@ -655,12 +680,12 @@ public class CarePlanMapper {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Resolves a Visit entity from an Encounter reference in FHIR extension.
 	 * In OpenMRS, Encounter/{uuid} can reference either an Encounter or a Visit (resolved by UUID).
 	 * This method tries to resolve as a Visit first, then as an Encounter.
-	 * 
+	 *
 	 * @param encounterRef the Encounter reference from FHIR extension
 	 * @return the Visit entity, or null if not found
 	 */
@@ -668,15 +693,15 @@ public class CarePlanMapper {
 		if (encounterRef == null || !encounterRef.hasReference()) {
 			return null;
 		}
-		
+
 		try {
 			IIdType encounterId = encounterRef.getReferenceElement();
 			if (encounterId == null || StringUtils.isBlank(encounterId.getIdPart())) {
 				return null;
 			}
-			
+
 			String uuid = encounterId.getIdPart();
-			
+
 			// First, try to resolve as a Visit directly
 			try {
 				VisitService visitService = Context.getVisitService();
@@ -688,7 +713,7 @@ public class CarePlanMapper {
 			catch (Exception ex) {
 				log.debug("UUID {} is not a Visit, trying as Encounter", uuid, ex);
 			}
-			
+
 			// If not found as Visit, try to resolve as Encounter and get its Visit
 			EncounterService encounterService = Context.getEncounterService();
 			Encounter encounter = encounterService.getEncounterByUuid(uuid);
@@ -699,13 +724,13 @@ public class CarePlanMapper {
 		catch (Exception ex) {
 			log.warn("Unable to resolve Visit from Encounter reference {}", encounterRef.getReference(), ex);
 		}
-		
+
 		return null;
 	}
-	
+
 	/**
 	 * Finds the visit that chronologically follows the reference visit for a NEXT_VISIT task.
-	 * 
+	 *
 	 * @param patient the Patient
 	 * @param referenceVisit the visit when the task was created
 	 * @return the next visit after the reference visit, or null if not found
@@ -714,10 +739,10 @@ public class CarePlanMapper {
 		if (patient == null || referenceVisit == null || referenceVisit.getStartDatetime() == null) {
 			return null;
 		}
-		
+
 		try {
 			java.util.List<Visit> visits = null;
-			
+
 			// Try to get visits directly from VisitService first
 			try {
 				org.openmrs.api.VisitService visitService = Context.getVisitService();
@@ -747,11 +772,11 @@ public class CarePlanMapper {
 					}
 				}
 			}
-			
+
 			if (visits != null && !visits.isEmpty()) {
 				Date refStart = referenceVisit.getStartDatetime();
 				Visit nextVisit = null;
-				
+
 				for (Visit visit : visits) {
 					Date visitStart = visit.getStartDatetime();
 					if (visitStart != null && visitStart.after(refStart)) {
@@ -764,25 +789,45 @@ public class CarePlanMapper {
 						        && visit.getUuid().equals(referenceVisit.getUuid())) {
 							isReference = true;
 						}
-						
+
 						if (!isReference) {
 							// Find the earliest visit after the reference visit
-							if (nextVisit == null || (nextVisit.getStartDatetime() != null 
+							if (nextVisit == null || (nextVisit.getStartDatetime() != null
 							        && visitStart.before(nextVisit.getStartDatetime()))) {
 								nextVisit = visit;
 							}
 						}
 					}
 				}
-				
+
 				return nextVisit;
 			}
 		}
 		catch (Exception ex) {
 			log.warn("Unable to find next visit after reference visit {}", referenceVisit.getUuid(), ex);
 		}
-		
+
 		return null;
 	}
-	
+
+	/**
+	 * Resolves a SystemTask entity from its UUID.
+	 *
+	 * @param systemTaskUuid the SystemTask UUID
+	 * @return the SystemTask entity, or null if not found
+	 */
+	private SystemTask resolveSystemTask(String systemTaskUuid) {
+		if (StringUtils.isBlank(systemTaskUuid)) {
+			return null;
+		}
+		try {
+			TasksService tasksService = Context.getService(TasksService.class);
+			return tasksService.getSystemTaskByUuid(systemTaskUuid);
+		}
+		catch (Exception ex) {
+			log.warn("Unable to resolve system task for uuid {}", systemTaskUuid, ex);
+		}
+		return null;
+	}
+
 }

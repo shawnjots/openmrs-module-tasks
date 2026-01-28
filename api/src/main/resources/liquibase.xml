@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
- 
+
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9
                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
- 
+
     <!--
-    	See http://wiki.openmrs.org/display/docs/Module+liquibase+File for 
+    	See http://wiki.openmrs.org/display/docs/Module+liquibase+File for
     	documentation on this file.
-    
+
         See http://www.liquibase.org/manual/home#available_database_refactorings
         for a list of supported elements and attributes
     -->
- 
+
 	<changeSet id="tasks-2025-01-15-12-00" author="developer">
 		<preConditions onFail="MARK_RAN">
 			<not><tableExists tableName="tasks_task"/></not>
@@ -195,6 +195,70 @@
 			<column name="due_date_reference_visit_id" type="int"/>
 		</addColumn>
 		<addForeignKeyConstraint constraintName="tasks_task_due_date_reference_visit_fk" baseTableName="tasks_task" baseColumnNames="due_date_reference_visit_id" referencedTableName="visit" referencedColumnNames="visit_id"/>
+	</changeSet>
+
+	<changeSet id="tasks-2025-12-17-create-systemtask-table" author="developer">
+		<preConditions onFail="MARK_RAN">
+			<not><tableExists tableName="tasks_systemtask"/></not>
+		</preConditions>
+		<comment>
+			Creating the tasks_systemtask table for system task templates
+		</comment>
+		<createTable tableName="tasks_systemtask">
+			<column name="tasks_systemtask_id" type="int" autoIncrement="true">
+				<constraints primaryKey="true" nullable="false"/>
+			</column>
+			<column name="uuid" type="char(38)">
+				<constraints nullable="false" unique="true"/>
+			</column>
+			<column name="name" type="varchar(255)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="title" type="varchar(255)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="description" type="text"/>
+			<column name="priority" type="varchar(50)"/>
+			<column name="default_assignee_provider_role_id" type="int"/>
+			<column name="rationale" type="text"/>
+			<column name="creator" type="int">
+				<constraints nullable="false"/>
+			</column>
+			<column name="date_created" type="datetime">
+				<constraints nullable="false"/>
+			</column>
+			<column name="changed_by" type="int"/>
+			<column name="date_changed" type="datetime"/>
+			<column name="retired" type="boolean" defaultValueBoolean="false">
+				<constraints nullable="false"/>
+			</column>
+			<column name="retired_by" type="int"/>
+			<column name="date_retired" type="datetime"/>
+			<column name="retire_reason" type="varchar(255)"/>
+		</createTable>
+		<addForeignKeyConstraint constraintName="tasks_systemtask_default_assignee_role_fk" baseTableName="tasks_systemtask" baseColumnNames="default_assignee_provider_role_id" referencedTableName="provider_role" referencedColumnNames="provider_role_id"/>
+		<addForeignKeyConstraint constraintName="tasks_systemtask_creator_fk" baseTableName="tasks_systemtask" baseColumnNames="creator" referencedTableName="users" referencedColumnNames="user_id"/>
+		<addForeignKeyConstraint constraintName="tasks_systemtask_changed_by_fk" baseTableName="tasks_systemtask" baseColumnNames="changed_by" referencedTableName="users" referencedColumnNames="user_id"/>
+		<addForeignKeyConstraint constraintName="tasks_systemtask_retired_by_fk" baseTableName="tasks_systemtask" baseColumnNames="retired_by" referencedTableName="users" referencedColumnNames="user_id"/>
+	</changeSet>
+
+	<changeSet id="tasks-2025-12-17-add-system-task-fk-to-task" author="developer">
+		<preConditions onFail="MARK_RAN">
+			<and>
+				<tableExists tableName="tasks_task"/>
+				<tableExists tableName="tasks_systemtask"/>
+				<not>
+					<columnExists tableName="tasks_task" columnName="system_task_id"/>
+				</not>
+			</and>
+		</preConditions>
+		<comment>
+			Add system_task_id foreign key to tasks_task table
+		</comment>
+		<addColumn tableName="tasks_task">
+			<column name="system_task_id" type="int"/>
+		</addColumn>
+		<addForeignKeyConstraint constraintName="tasks_task_system_task_fk" baseTableName="tasks_task" baseColumnNames="system_task_id" referencedTableName="tasks_systemtask" referencedColumnNames="tasks_systemtask_id"/>
 	</changeSet>
 
 </databaseChangeLog>

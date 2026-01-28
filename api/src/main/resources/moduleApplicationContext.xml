@@ -67,6 +67,12 @@
         <property name="carePlanMapper" ref="tasks.CarePlanMapper" />
     </bean>
 
+    <!-- FHIR Resource Provider for PlanDefinition (read-only) - exposes system tasks as task templates -->
+    <bean id="tasks.PlanDefinitionFhirResourceProvider" class="org.openmrs.module.tasks.api.fhir.PlanDefinitionFhirResourceProvider">
+        <property name="tasksService" ref="tasks.TasksService" />
+        <property name="planDefinitionMapper" ref="tasks.PlanDefinitionMapper" />
+    </bean>
+
     <!-- Cache interceptor for FHIR2 module compatibility -->
     <!-- FHIR2 module requires this bean to be available. Using a no-op implementation. -->
     <bean id="cacheInterceptor" class="org.springframework.aop.interceptor.SimpleTraceInterceptor">
