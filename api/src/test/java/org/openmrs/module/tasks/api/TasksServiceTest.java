@@ -40,7 +40,7 @@ public class TasksServiceTest {
 	
 	@Before
 	public void setupMocks() {
-		MockitoAnnotations.openMocks(this);
+		MockitoAnnotations.initMocks(this);
 	}
 	
 	@Test

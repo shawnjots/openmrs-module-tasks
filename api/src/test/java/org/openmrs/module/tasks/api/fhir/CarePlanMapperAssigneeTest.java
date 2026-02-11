@@ -31,7 +31,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
 
 import java.util.Properties;
@@ -73,7 +73,7 @@ public class CarePlanMapperAssigneeTest extends BaseModuleContextSensitiveTest {
 	
 	@Before
 	public void setUp() throws Exception {
-		MockitoAnnotations.openMocks(this);
+		MockitoAnnotations.initMocks(this);
 		
 		patientService = Context.getPatientService();
 		providerService = Context.getProviderService();
@@ -137,7 +137,7 @@ public class CarePlanMapperAssigneeTest extends BaseModuleContextSensitiveTest {
 		
 		// Mock practitioner reference translator to resolve Practitioner references
 		when(practitionerReferenceTranslator.toOpenmrsType(any(Reference.class))).thenAnswer(invocation -> {
-			Reference ref = invocation.getArgument(0);
+			Reference ref = (Reference) invocation.getArguments()[0];
 			if (ref.getReference() != null && ref.getReference().contains("Practitioner/")) {
 				String uuid = ref.getReference().substring("Practitioner/".length());
 				if (uuid.equals(testProvider.getUuid())) {

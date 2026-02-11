@@ -43,7 +43,7 @@ import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
 
 import java.util.Calendar;
@@ -85,7 +85,7 @@ public class CarePlanMapperTest extends BaseModuleContextSensitiveTest {
 	
 	@Before
 	public void setUp() throws Exception {
-		MockitoAnnotations.openMocks(this);
+		MockitoAnnotations.initMocks(this);
 		
 		patientService = Context.getPatientService();
 		providerService = Context.getProviderService();
@@ -149,7 +149,7 @@ public class CarePlanMapperTest extends BaseModuleContextSensitiveTest {
 		
 		// Mock practitioner reference translator to resolve Practitioner references
 		when(practitionerReferenceTranslator.toOpenmrsType(any(Reference.class))).thenAnswer(invocation -> {
-			Reference ref = invocation.getArgument(0);
+			Reference ref = (Reference) invocation.getArguments()[0];
 			if (ref.getReference() != null && ref.getReference().contains("Practitioner/")) {
 				String uuid = ref.getReference().substring("Practitioner/".length());
 				// Return the test provider if UUID matches, otherwise try to find it
@@ -163,7 +163,7 @@ public class CarePlanMapperTest extends BaseModuleContextSensitiveTest {
 		
 		// Mock practitioner reference translator to convert Provider to FHIR reference
 		when(practitionerReferenceTranslator.toFhirResource(any(Provider.class))).thenAnswer(invocation -> {
-			Provider provider = invocation.getArgument(0);
+			Provider provider = (Provider) invocation.getArguments()[0];
 			if (provider != null && provider.getUuid() != null) {
 				Reference ref = new Reference();
 				ref.setReference("Practitioner/" + provider.getUuid());
