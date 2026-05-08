@@ -36,29 +36,42 @@ The module integrates with the OpenMRS FHIR2 module to expose standard FHIR endp
 - **Response:** Returns a list of CarePlan resources matching the search criteria
 
 ### Via Direct REST Controller
-The module also exposes endpoints directly at `/fhir/CarePlan`:
+The module also exposes endpoints directly at `/ws/rest/v1/tasks/careplan`:
 
 **Create CarePlan**
-- **Endpoint:** `POST /fhir/CarePlan`
+- **Endpoint:** `POST /ws/rest/v1/tasks/careplan`
 - **Content-Type:** `application/json`
 - **Description:** Creates a new CarePlan resource
 - **Request Body:** FHIR CarePlan resource in JSON format
 - **Response:** Returns the created CarePlan as JSON with HTTP 201 (Created)
-- **Error Response:** Returns FHIR OperationOutcome in JSON format on error
+- **Error Response:** Returns a JSON error object on error
+
+**Read CarePlan by ID**
+- **Endpoint:** `GET /ws/rest/v1/tasks/careplan/{carePlanId}`
+- **Description:** Retrieves a CarePlan by UUID
+- **Response:** Returns the CarePlan as JSON, or 404 with a JSON error object if not found
+
+**Update CarePlan**
+- **Endpoint:** `PUT /ws/rest/v1/tasks/careplan/{carePlanId}`
+- **Content-Type:** `application/json`
+- **Description:** Replaces an existing CarePlan resource. PUT is a full replace; any field absent from the payload is reset on the underlying task.
+- **Request Body:** FHIR CarePlan resource in JSON format
+- **Response:** Returns the updated CarePlan as JSON
+- **Error Response:** 404 if no CarePlan exists with the given UUID; 400 for malformed payloads or invalid references
 
 **Get CarePlans by Patient**
-- **Endpoint:** `GET /fhir/CarePlan?subject=Patient/{patientId}`
+- **Endpoint:** `GET /ws/rest/v1/tasks/careplan?subject=Patient/{patientId}`
 - **Description:** Retrieves all CarePlans for a specific patient
 - **Query Parameters:**
   - `subject` (required): Patient reference in format `Patient/{patientId}`
 - **Response:** Returns a FHIR Bundle containing CarePlan resources
-- **Error Response:** Returns FHIR OperationOutcome in JSON format on error
+- **Error Response:** Returns a JSON error object on error
 
 **Note:** All endpoints require authentication as per OpenMRS security configuration. The base URL for endpoints is relative to your OpenMRS server installation (e.g., `http://localhost:8080/openmrs`).
 
 Building from Source
 --------------------
-You will need to have Java 21+ and Maven 2.x+ installed.  Use the command 'mvn package' to 
+You will need to have Java 8+ and Maven 3.x+ installed.  Use the command 'mvn package' to 
 compile and package the module.  The .omod file will be in the omod/target folder.
 
 Alternatively you can add the snippet provided in the [Creating Modules](https://wiki.openmrs.org/x/cAEr) page to your 

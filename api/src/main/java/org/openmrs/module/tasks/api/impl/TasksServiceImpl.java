@@ -1,4 +1,4 @@
-/**
+/*
  * This Source Code Form is subject to the terms of the Mozilla Public License,
  * v. 2.0. If a copy of the MPL was not distributed with this file, You can
  * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
@@ -17,12 +17,11 @@ import org.openmrs.module.tasks.api.TasksService;
 import org.openmrs.module.tasks.api.dao.TasksDao;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Date;
 import java.util.List;
 
 public class TasksServiceImpl extends BaseOpenmrsService implements TasksService {
 	
-	TasksDao dao;
+	private TasksDao dao;
 	
 	/**
 	 * Injected in moduleApplicationContext.xml
@@ -50,22 +49,28 @@ public class TasksServiceImpl extends BaseOpenmrsService implements TasksService
 	}
 	
 	@Override
+	@Transactional(readOnly = true)
+	public List<Task> getTasksByPatientId(Integer patientId, boolean includeVoided) throws APIException {
+		return dao.getTasksByPatientId(patientId, includeVoided);
+	}
+	
+	@Override
+	@Transactional(readOnly = true)
+	public List<Task> getActiveTasksByPatientId(Integer patientId) throws APIException {
+		return dao.getActiveTasksByPatientId(patientId);
+	}
+	
+	@Override
 	@Transactional
 	public void voidTask(Task task, String voidReason) throws APIException {
 		if (task == null) {
 			throw new APIException("Task cannot be null");
 		}
-		if (Boolean.TRUE.equals(task.getVoided())) {
-			return;
-		}
 		if (voidReason == null || voidReason.trim().isEmpty()) {
 			throw new APIException("Void reason is required");
 		}
-		task.setVoided(true);
-		task.setVoidReason(voidReason);
-		if (task.getDateVoided() == null) {
-			task.setDateVoided(new Date());
-		}
+		// voided, voidedBy, dateVoided, voidReason are populated by OpenMRS's RequiredDataAdvice
+		// (BaseVoidHandler) before this method runs.
 		dao.saveTask(task);
 	}
 	
@@ -103,16 +108,10 @@ public class TasksServiceImpl extends BaseOpenmrsService implements TasksService
 			throw new APIException("SystemTask cannot be null");
 		}
 		if (retireReason == null || retireReason.trim().isEmpty()) {
-			retireReason = systemTask.getRetireReason();
-		}
-		if (retireReason == null || retireReason.trim().isEmpty()) {
 			throw new APIException("Retire reason is required");
 		}
-		systemTask.setRetired(true);
-		systemTask.setRetireReason(retireReason);
-		if (systemTask.getDateRetired() == null) {
-			systemTask.setDateRetired(new Date());
-		}
+		// retired, retiredBy, dateRetired, retireReason are populated by OpenMRS's RequiredDataAdvice
+		// (BaseRetireHandler) before this method runs.
 		dao.saveSystemTask(systemTask);
 	}
 }

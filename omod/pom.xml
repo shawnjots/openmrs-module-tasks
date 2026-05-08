@@ -9,37 +9,41 @@
 	<artifactId>tasks-omod</artifactId>
 	<packaging>jar</packaging>
 	<name>Tasks OMOD</name>
-	<description>Omod submodule for Tasks</description>
+	<description>OMOD submodule for Tasks</description>
 
 	<dependencies>
+		<dependency>
+			<groupId>org.openmrs.web</groupId>
+			<artifactId>openmrs-web</artifactId>
+			<exclusions>
+				<!-- replaced locally for tests -->
+				<exclusion>
+					<groupId>javax.servlet</groupId>
+					<artifactId>servlet-api</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
         <dependency>
-            <groupId>org.openmrs.module</groupId>
-            <artifactId>tasks-api</artifactId>
-            <version>1.1.0-SNAPSHOT</version>
+            <groupId>${project.parent.groupId}</groupId>
+            <artifactId>${project.parent.artifactId}-api</artifactId>
+            <version>${project.parent.version}</version>
         </dependency>
 		<!-- Use fhir2-api instead of bundling HAPI FHIR directly - this avoids classloader conflicts -->
 		<dependency>
 			<groupId>org.openmrs.module</groupId>
 			<artifactId>fhir2-api</artifactId>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-web</artifactId>
-			<version>5.3.30</version>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-webmvc</artifactId>
-			<version>5.3.30</version>
-			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.openmrs.module</groupId>
 			<artifactId>webservices.rest-omod</artifactId>
-			<version>2.50.0</version>
-			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>javax.servlet-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.jayway.jsonpath</groupId>
+			<artifactId>json-path</artifactId>
 		</dependency>
 	</dependencies>
 

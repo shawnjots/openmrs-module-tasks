@@ -1,4 +1,4 @@
-/**
+/*
  * This Source Code Form is subject to the terms of the Mozilla Public License,
  * v. 2.0. If a copy of the MPL was not distributed with this file, You can
  * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
@@ -9,7 +9,6 @@
  */
 package org.openmrs.module.tasks;
 
-import org.hl7.fhir.r4.model.CarePlan;
 import org.openmrs.BaseOpenmrsData;
 import org.openmrs.Patient;
 import org.openmrs.Provider;
@@ -77,11 +76,11 @@ public class Task extends BaseOpenmrsData {
 	
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", length = 50)
-	private CarePlan.CarePlanActivityStatus status;
+	private TaskStatus status;
 	
 	@Enumerated(EnumType.STRING)
 	@Column(name = "kind", length = 50)
-	private CarePlan.CarePlanActivityKind kind;
+	private TaskKind kind;
 	
 	@Enumerated(EnumType.STRING)
 	@Column(name = "priority", length = 50)
@@ -147,19 +146,19 @@ public class Task extends BaseOpenmrsData {
 		this.assigneeProviderRoleId = assigneeProviderRoleId;
 	}
 	
-	public CarePlan.CarePlanActivityStatus getStatus() {
+	public TaskStatus getStatus() {
 		return status;
 	}
 	
-	public void setStatus(CarePlan.CarePlanActivityStatus status) {
+	public void setStatus(TaskStatus status) {
 		this.status = status;
 	}
 	
-	public CarePlan.CarePlanActivityKind getKind() {
+	public TaskKind getKind() {
 		return kind;
 	}
 	
-	public void setKind(CarePlan.CarePlanActivityKind kind) {
+	public void setKind(TaskKind kind) {
 		this.kind = kind;
 	}
 	

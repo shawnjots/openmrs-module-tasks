@@ -1,4 +1,4 @@
-/**
+/*
  * This Source Code Form is subject to the terms of the Mozilla Public License,
  * v. 2.0. If a copy of the MPL was not distributed with this file, You can
  * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
@@ -25,6 +25,7 @@ import org.openmrs.module.fhir2.api.translators.PractitionerReferenceTranslator;
 import org.openmrs.module.tasks.Priority;
 import org.openmrs.module.tasks.SystemTask;
 import org.openmrs.module.tasks.Task;
+import org.openmrs.module.tasks.TaskStatus;
 import org.openmrs.module.tasks.api.TasksService;
 import org.openmrs.test.BaseModuleContextSensitiveTest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +36,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 /**
@@ -103,7 +104,7 @@ public class CarePlanMapperInstantiatesCanonicalTest extends BaseModuleContextSe
 		Task task = new Task();
 		task.setPatient(testPatient);
 		task.setDescription("Task from template");
-		task.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		task.setStatus(TaskStatus.NOTSTARTED);
 		task.setSystemTask(testSystemTask);
 		
 		// When: Converting Task to CarePlan
@@ -124,7 +125,7 @@ public class CarePlanMapperInstantiatesCanonicalTest extends BaseModuleContextSe
 		Task task = new Task();
 		task.setPatient(testPatient);
 		task.setDescription("Standalone task");
-		task.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		task.setStatus(TaskStatus.NOTSTARTED);
 		task.setSystemTask(null);
 		
 		// When: Converting Task to CarePlan
@@ -251,5 +252,31 @@ public class CarePlanMapperInstantiatesCanonicalTest extends BaseModuleContextSe
 		// Then: Task should not have systemTask set (only PlanDefinition is supported)
 		assertThat(result, is(notNullValue()));
 		assertThat(result.getSystemTask(), is(nullValue()));
+	}
+	
+	@Test
+	public void applyCarePlanToTask_withMultipleCanonicals_shouldUseFirstResolvablePlanDefinition() {
+		CarePlan carePlan = new CarePlan();
+		carePlan.setStatus(CarePlan.CarePlanStatus.ACTIVE);
+		carePlan.setIntent(CarePlan.CarePlanIntent.PLAN);
+		// Earlier non-PlanDefinition entries should be skipped before we land on the real one.
+		carePlan.addInstantiatesCanonical("ActivityDefinition/ignored-uuid");
+		carePlan.addInstantiatesCanonical("PlanDefinition/" + testSystemTask.getUuid());
+		
+		Reference patientRef = new Reference();
+		patientRef.setReference("Patient/" + testPatient.getUuid());
+		carePlan.setSubject(patientRef);
+		
+		CarePlan.CarePlanActivityComponent activity = new CarePlan.CarePlanActivityComponent();
+		CarePlan.CarePlanActivityDetailComponent detail = new CarePlan.CarePlanActivityDetailComponent();
+		detail.setStatus(CarePlan.CarePlanActivityStatus.NOTSTARTED);
+		detail.setDescription("Task from FHIR");
+		activity.setDetail(detail);
+		carePlan.addActivity(activity);
+		
+		Task result = carePlanMapper.applyCarePlanToTask(new Task(), carePlan, testPatient, null, null);
+		
+		assertThat(result.getSystemTask(), is(notNullValue()));
+		assertThat(result.getSystemTask().getUuid(), is(testSystemTask.getUuid()));
 	}
 }

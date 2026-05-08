@@ -8,3 +8,4 @@ activemq-data/
 *.sass-cache
 *.DS_Store
 /bin/
+.vscode/

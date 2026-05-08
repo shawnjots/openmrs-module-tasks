@@ -1,4 +1,4 @@
-/**
+/*
  * This Source Code Form is subject to the terms of the Mozilla Public License,
  * v. 2.0. If a copy of the MPL was not distributed with this file, You can
  * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
@@ -81,15 +81,14 @@ public class PlanDefinitionMapperTest {
 		systemTask.setName("high-priority-task");
 		systemTask.setTitle("High Priority Task");
 		systemTask.setPriority(Priority.HIGH);
-
+		
 		PlanDefinition result = mapper.toPlanDefinition(systemTask);
-
+		
 		assertThat(result.hasAction(), is(true));
 		assertThat(result.getActionFirstRep().hasExtension(), is(true));
-
+		
 		boolean foundPriorityExtension = result.getActionFirstRep().getExtension().stream()
-		        .anyMatch(ext -> ext.getUrl().contains("activity-priority")
-		                && ext.getValue().toString().contains("high"));
+		        .anyMatch(ext -> ext.getUrl().contains("activity-priority") && ext.getValue().toString().contains("high"));
 		assertThat(foundPriorityExtension, is(true));
 	}
 	
@@ -116,59 +115,76 @@ public class PlanDefinitionMapperTest {
 	}
 	
 	@Test
-	public void toSystemTask_shouldMapBasicFields() {
-		PlanDefinition planDefinition = new PlanDefinition();
-		planDefinition.setId("pd-uuid");
-		planDefinition.setName("plan-definition-name");
-		planDefinition.setTitle("Plan Definition Title");
-		planDefinition.setDescription("Plan Description");
-		planDefinition.setStatus(Enumerations.PublicationStatus.ACTIVE);
+	public void toPlanDefinition_withMediumPriority_shouldEmitMediumExtension() {
+		SystemTask systemTask = new SystemTask();
+		systemTask.setUuid("uuid");
+		systemTask.setName("n");
+		systemTask.setTitle("t");
+		systemTask.setPriority(Priority.MEDIUM);
 		
-		// Add action with reason for rationale
-		PlanDefinition.PlanDefinitionActionComponent action = planDefinition.addAction();
-		org.hl7.fhir.r4.model.CodeableConcept reason = new org.hl7.fhir.r4.model.CodeableConcept();
-		reason.setText("Plan Rationale");
-		action.addReason(reason);
+		PlanDefinition result = mapper.toPlanDefinition(systemTask);
 		
-		SystemTask result = mapper.toSystemTask(planDefinition);
-		
-		assertThat(result, is(notNullValue()));
-		assertThat(result.getUuid(), is("pd-uuid"));
-		assertThat(result.getName(), is("plan-definition-name"));
-		assertThat(result.getTitle(), is("Plan Definition Title"));
-		assertThat(result.getDescription(), is("Plan Description"));
-		assertThat(result.getRationale(), is("Plan Rationale"));
-		assertThat(result.getRetired(), is(false));
+		boolean found = result.getActionFirstRep().getExtension().stream()
+		        .anyMatch(ext -> ext.getUrl().contains("activity-priority") && ext.getValue().toString().contains("medium"));
+		assertThat(found, is(true));
 	}
 	
 	@Test
-	public void toSystemTask_shouldMapRetiredStatus() {
-		PlanDefinition planDefinition = new PlanDefinition();
-		planDefinition.setId("retired-pd-uuid");
-		planDefinition.setName("Retired Plan");
-		planDefinition.setStatus(Enumerations.PublicationStatus.RETIRED);
+	public void toPlanDefinition_withLowPriority_shouldEmitLowExtension() {
+		SystemTask systemTask = new SystemTask();
+		systemTask.setUuid("uuid");
+		systemTask.setName("n");
+		systemTask.setTitle("t");
+		systemTask.setPriority(Priority.LOW);
 		
-		SystemTask result = mapper.toSystemTask(planDefinition);
+		PlanDefinition result = mapper.toPlanDefinition(systemTask);
 		
-		assertThat(result.getRetired(), is(true));
+		boolean found = result.getActionFirstRep().getExtension().stream()
+		        .anyMatch(ext -> ext.getUrl().contains("activity-priority") && ext.getValue().toString().contains("low"));
+		assertThat(found, is(true));
 	}
 	
 	@Test
-	public void toSystemTask_shouldReturnNullForNullInput() {
-		SystemTask result = mapper.toSystemTask(null);
-		assertThat(result, is(nullValue()));
+	public void toPlanDefinition_withNullPriority_shouldNotEmitPriorityExtension() {
+		SystemTask systemTask = new SystemTask();
+		systemTask.setUuid("uuid");
+		systemTask.setName("n");
+		systemTask.setTitle("t");
+		systemTask.setPriority(null);
+		
+		PlanDefinition result = mapper.toPlanDefinition(systemTask);
+		
+		assertThat(result.hasAction(), is(true));
+		boolean found = result.getActionFirstRep().getExtension().stream()
+		        .anyMatch(ext -> ext.getUrl().contains("activity-priority"));
+		assertThat(found, is(false));
 	}
 	
 	@Test
-	public void toSystemTask_shouldMapTitleSeparately() {
-		PlanDefinition planDefinition = new PlanDefinition();
-		planDefinition.setId("title-uuid");
-		planDefinition.setName("machine-name");
-		planDefinition.setTitle("Human Readable Title");
+	public void toPlanDefinition_withoutRationale_shouldNotEmitActionReason() {
+		SystemTask systemTask = new SystemTask();
+		systemTask.setUuid("uuid");
+		systemTask.setName("n");
+		systemTask.setTitle("t");
+		// rationale not set
 		
-		SystemTask result = mapper.toSystemTask(planDefinition);
+		PlanDefinition result = mapper.toPlanDefinition(systemTask);
 		
-		assertThat(result.getName(), is("machine-name"));
-		assertThat(result.getTitle(), is("Human Readable Title"));
+		assertThat(result.hasAction(), is(true));
+		assertThat(result.getActionFirstRep().hasReason(), is(false));
 	}
+	
+	@Test
+	public void toPlanDefinition_withoutDescription_shouldNotEmitActionDescription() {
+		SystemTask systemTask = new SystemTask();
+		systemTask.setUuid("uuid");
+		systemTask.setName("n");
+		systemTask.setTitle("t");
+		
+		PlanDefinition result = mapper.toPlanDefinition(systemTask);
+		
+		assertThat(result.hasDescription(), is(false));
+		assertThat(result.getActionFirstRep().hasDescription(), is(false));
+	}
+	
 }

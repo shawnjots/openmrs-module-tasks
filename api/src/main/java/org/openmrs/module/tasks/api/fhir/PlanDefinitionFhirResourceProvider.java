@@ -1,4 +1,4 @@
-/**
+/*
  * This Source Code Form is subject to the terms of the Mozilla Public License,
  * v. 2.0. If a copy of the MPL was not distributed with this file, You can
  * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
@@ -20,6 +20,7 @@ import org.hl7.fhir.r4.model.PlanDefinition;
 import org.openmrs.module.fhir2.api.annotations.R4Provider;
 import org.openmrs.module.tasks.SystemTask;
 import org.openmrs.module.tasks.api.TasksService;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +41,8 @@ public class PlanDefinitionFhirResourceProvider implements IResourceProvider {
 	public PlanDefinitionFhirResourceProvider() {
 	}
 	
-	public PlanDefinitionFhirResourceProvider(TasksService tasksService, PlanDefinitionMapper planDefinitionMapper) {
+	public PlanDefinitionFhirResourceProvider(@Qualifier("tasks.TasksService") TasksService tasksService,
+	    PlanDefinitionMapper planDefinitionMapper) {
 		this.tasksService = tasksService;
 		this.planDefinitionMapper = planDefinitionMapper;
 	}
@@ -80,39 +82,33 @@ public class PlanDefinitionFhirResourceProvider implements IResourceProvider {
 	@Search
 	public List<PlanDefinition> search(@OptionalParam(name = "status") String status) {
 		List<PlanDefinition> planDefinitions = new ArrayList<>();
-
-		// Determine whether to include retired based on status parameter
-		boolean includeRetired = false;
+		
+		// Translate the optional status filter into the includeRetired flag the service exposes.
+		// status=retired → fetch only retired (the per-row filter below drops actives).
+		// status=active or unset → fetch only actives, no per-row filter needed.
+		// Anything else → empty result.
+		boolean wantRetired = false;
 		if (StringUtils.isNotBlank(status)) {
 			if ("retired".equalsIgnoreCase(status)) {
-				// Only return retired ones - we'll filter below
-				includeRetired = true;
+				wantRetired = true;
 			} else if (!"active".equalsIgnoreCase(status)) {
-				// Unknown status, return empty
 				return planDefinitions;
 			}
 		}
-
-		List<SystemTask> systemTasks = tasksService.getAllSystemTasks(includeRetired);
-
+		
+		List<SystemTask> systemTasks = tasksService.getAllSystemTasks(wantRetired);
+		
 		for (SystemTask systemTask : systemTasks) {
-			// If status filter is specified, apply it
-			if (StringUtils.isNotBlank(status)) {
-				boolean isRetired = Boolean.TRUE.equals(systemTask.getRetired());
-				if ("active".equalsIgnoreCase(status) && isRetired) {
-					continue;
-				}
-				if ("retired".equalsIgnoreCase(status) && !isRetired) {
-					continue;
-				}
+			if (wantRetired && !Boolean.TRUE.equals(systemTask.getRetired())) {
+				// getAllSystemTasks(true) returns retired AND active rows; keep only retired here.
+				continue;
 			}
-
 			PlanDefinition planDefinition = planDefinitionMapper.toPlanDefinition(systemTask);
 			if (planDefinition != null) {
 				planDefinitions.add(planDefinition);
 			}
 		}
-
+		
 		return planDefinitions;
 	}
 	

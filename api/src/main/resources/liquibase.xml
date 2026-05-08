@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    This Source Code Form is subject to the terms of the Mozilla Public License,
+    v. 2.0. If a copy of the MPL was not distributed with this file, You can
+    obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
+    the terms of the Healthcare Disclaimer located at http://openmrs.org/license.
+
+    Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
+    graphic logo is a trademark of OpenMRS Inc.
+
+-->
 
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -173,6 +184,34 @@
 			<column name="description" value="Allows voiding and purging tasks"/>
 			<column name="uuid" value="61b7d36f-7486-4c9f-b5ed-47be89f45e9a"/>
 		</insert>
+	</changeSet>
+
+	<!--
+	    Indexes to support the common "tasks for a patient" lookup.
+	    The composite (patient_id, voided) covers both the patient-only scan and the patient-plus-
+	    voided filter via the leftmost-prefix rule; a solo voided index is too low-cardinality to
+	    be useful. system_task_id gets its own index because PlanDefinition-driven lookups filter
+	    on it independently.
+	-->
+	<changeSet id="tasks-task-patient-voided-index" author="developer">
+		<preConditions onFail="MARK_RAN">
+			<not><indexExists indexName="tasks_task_patient_voided_idx"/></not>
+		</preConditions>
+		<comment>Add index on (patient_id, voided) to tasks_task</comment>
+		<createIndex indexName="tasks_task_patient_voided_idx" tableName="tasks_task">
+			<column name="patient_id"/>
+			<column name="voided"/>
+		</createIndex>
+	</changeSet>
+
+	<changeSet id="tasks-task-system-task-index" author="developer">
+		<preConditions onFail="MARK_RAN">
+			<not><indexExists indexName="tasks_task_system_task_idx"/></not>
+		</preConditions>
+		<comment>Add index on (system_task_id) to tasks_task</comment>
+		<createIndex indexName="tasks_task_system_task_idx" tableName="tasks_task">
+			<column name="system_task_id"/>
+		</createIndex>
 	</changeSet>
 
 </databaseChangeLog>

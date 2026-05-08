@@ -1,4 +1,4 @@
-/**
+/*
  * This Source Code Form is subject to the terms of the Mozilla Public License,
  * v. 2.0. If a copy of the MPL was not distributed with this file, You can
  * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
@@ -18,9 +18,11 @@ import org.hibernate.SessionFactory;
 import org.openmrs.api.db.hibernate.HibernateUtil;
 import org.openmrs.module.tasks.SystemTask;
 import org.openmrs.module.tasks.Task;
+import org.openmrs.module.tasks.TaskStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Repository("tasks.TasksDao")
@@ -47,8 +49,24 @@ public class TasksDao {
 	}
 	
 	public List<Task> getTasksByPatientId(Integer patientId) {
-		return getCurrentSession().createQuery("from tasks.Task t where t.patient.patientId = :patientId", Task.class)
-		        .setParameter("patientId", patientId).getResultList();
+		return getTasksByPatientId(patientId, false);
+	}
+	
+	public List<Task> getTasksByPatientId(Integer patientId, boolean includeVoided) {
+		String hql = "from tasks.Task t where t.patient.patientId = :patientId";
+		if (!includeVoided) {
+			hql += " and t.voided = false";
+		}
+		hql += " order by t.dateCreated desc";
+		return getCurrentSession().createQuery(hql, Task.class).setParameter("patientId", patientId).getResultList();
+	}
+	
+	public List<Task> getActiveTasksByPatientId(Integer patientId) {
+		String hql = "from tasks.Task t where t.patient.patientId = :patientId and t.voided = false"
+		        + " and (t.status is null or t.status not in (:excluded))" + " order by t.dateCreated desc";
+		return getCurrentSession().createQuery(hql, Task.class).setParameter("patientId", patientId)
+		        .setParameterList("excluded", Arrays.asList(TaskStatus.CANCELLED, TaskStatus.ENTEREDINERROR))
+		        .getResultList();
 	}
 	
 	public SystemTask getSystemTaskByUuid(String uuid) {

@@ -1,4 +1,4 @@
-/**
+/*
  * This Source Code Form is subject to the terms of the Mozilla Public License,
  * v. 2.0. If a copy of the MPL was not distributed with this file, You can
  * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
@@ -14,6 +14,7 @@ import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.PlanDefinition;
 import org.junit.Before;
 import org.junit.Test;
+import org.openmrs.ProviderRole;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.tasks.Priority;
 import org.openmrs.module.tasks.SystemTask;
@@ -99,6 +100,29 @@ public class PlanDefinitionFhirResourceProviderTest extends BaseModuleContextSen
 	}
 	
 	@Test
+	public void read_withBlankIdPart_shouldReturnNull() {
+		assertThat(provider.read(new IdType("   ")), is(nullValue()));
+	}
+	
+	@Test
+	public void read_withEmptyIdPart_shouldReturnNull() {
+		assertThat(provider.read(new IdType("")), is(nullValue()));
+	}
+	
+	@Test
+	public void read_withNullId_shouldReturnNull() {
+		assertThat(provider.read(null), is(nullValue()));
+	}
+	
+	@Test
+	public void search_withNullStatus_whenNoSystemTasks_shouldReturnEmptyList() {
+		// Given a freshly-migrated schema with no system tasks seeded
+		List<PlanDefinition> results = provider.search(null);
+		
+		assertThat(results, is(empty()));
+	}
+	
+	@Test
 	public void read_shouldReturnRetiredPlanDefinition() {
 		// Given: A retired system task exists
 		SystemTask systemTask = new SystemTask();
@@ -127,33 +151,33 @@ public class PlanDefinitionFhirResourceProviderTest extends BaseModuleContextSen
 		active1.setTitle("Active Template 1");
 		active1.setPriority(Priority.HIGH);
 		tasksService.saveSystemTask(active1);
-
+		
 		SystemTask active2 = new SystemTask();
 		active2.setName("active-template-2");
 		active2.setTitle("Active Template 2");
 		active2.setPriority(Priority.MEDIUM);
 		tasksService.saveSystemTask(active2);
-
+		
 		SystemTask retired = new SystemTask();
 		retired.setName("retired-template");
 		retired.setTitle("Retired Template");
 		retired.setRetired(true);
 		retired.setRetireReason("No longer used");
 		tasksService.saveSystemTask(retired);
-
+		
 		Context.flushSession();
 		Context.clearSession();
-
+		
 		// When: Searching without status filter
 		List<PlanDefinition> results = provider.search(null);
-
+		
 		// Then: Should return only active system tasks
 		assertThat(results.size(), is(greaterThanOrEqualTo(2)));
-
+		
 		boolean foundActive1 = results.stream().anyMatch(pd -> "active-template-1".equals(pd.getName()));
 		boolean foundActive2 = results.stream().anyMatch(pd -> "active-template-2".equals(pd.getName()));
 		boolean foundRetired = results.stream().anyMatch(pd -> "retired-template".equals(pd.getName()));
-
+		
 		assertThat(foundActive1, is(true));
 		assertThat(foundActive2, is(true));
 		assertThat(foundRetired, is(false));
@@ -166,27 +190,27 @@ public class PlanDefinitionFhirResourceProviderTest extends BaseModuleContextSen
 		active.setName("active-for-status-filter");
 		active.setTitle("Active for Status Filter");
 		tasksService.saveSystemTask(active);
-
+		
 		SystemTask retired = new SystemTask();
 		retired.setName("retired-for-status-filter");
 		retired.setTitle("Retired for Status Filter");
 		retired.setRetired(true);
 		retired.setRetireReason("Testing");
 		tasksService.saveSystemTask(retired);
-
+		
 		Context.flushSession();
 		Context.clearSession();
-
+		
 		// When: Searching with status=active
 		List<PlanDefinition> results = provider.search("active");
-
+		
 		// Then: Should return only active system tasks
 		boolean foundActive = results.stream().anyMatch(pd -> "active-for-status-filter".equals(pd.getName()));
 		boolean foundRetired = results.stream().anyMatch(pd -> "retired-for-status-filter".equals(pd.getName()));
-
+		
 		assertThat(foundActive, is(true));
 		assertThat(foundRetired, is(false));
-
+		
 		// All results should have ACTIVE status
 		for (PlanDefinition pd : results) {
 			assertThat(pd.getStatus(), is(Enumerations.PublicationStatus.ACTIVE));
@@ -200,27 +224,27 @@ public class PlanDefinitionFhirResourceProviderTest extends BaseModuleContextSen
 		active.setName("active-for-retired-filter");
 		active.setTitle("Active for Retired Filter");
 		tasksService.saveSystemTask(active);
-
+		
 		SystemTask retired = new SystemTask();
 		retired.setName("retired-for-retired-filter");
 		retired.setTitle("Retired for Retired Filter");
 		retired.setRetired(true);
 		retired.setRetireReason("Testing");
 		tasksService.saveSystemTask(retired);
-
+		
 		Context.flushSession();
 		Context.clearSession();
-
+		
 		// When: Searching with status=retired
 		List<PlanDefinition> results = provider.search("retired");
-
+		
 		// Then: Should return only retired system tasks
 		boolean foundActive = results.stream().anyMatch(pd -> "active-for-retired-filter".equals(pd.getName()));
 		boolean foundRetired = results.stream().anyMatch(pd -> "retired-for-retired-filter".equals(pd.getName()));
-
+		
 		assertThat(foundActive, is(false));
 		assertThat(foundRetired, is(true));
-
+		
 		// All results should have RETIRED status
 		for (PlanDefinition pd : results) {
 			assertThat(pd.getStatus(), is(Enumerations.PublicationStatus.RETIRED));
@@ -259,23 +283,21 @@ public class PlanDefinitionFhirResourceProviderTest extends BaseModuleContextSen
 		systemTask.setTitle("High Priority Template");
 		systemTask.setPriority(Priority.HIGH);
 		tasksService.saveSystemTask(systemTask);
-
+		
 		Context.flushSession();
 		Context.clearSession();
-
+		
 		// When: Searching
 		List<PlanDefinition> results = provider.search(null);
-
+		
 		// Then: The result should include priority extension
-		PlanDefinition found = results.stream()
-		        .filter(pd -> "high-priority-template".equals(pd.getName()))
-		        .findFirst()
+		PlanDefinition found = results.stream().filter(pd -> "high-priority-template".equals(pd.getName())).findFirst()
 		        .orElse(null);
-
+		
 		assertThat(found, is(notNullValue()));
 		assertThat(found.hasAction(), is(true));
 		assertThat(found.getActionFirstRep().hasExtension(), is(true));
-
+		
 		boolean hasPriorityExtension = found.getActionFirstRep().getExtension().stream()
 		        .anyMatch(ext -> ext.getUrl().contains("activity-priority"));
 		assertThat(hasPriorityExtension, is(true));
@@ -289,24 +311,51 @@ public class PlanDefinitionFhirResourceProviderTest extends BaseModuleContextSen
 		systemTask.setTitle("Template with Rationale");
 		systemTask.setRationale("Important clinical reason");
 		tasksService.saveSystemTask(systemTask);
-
+		
 		Context.flushSession();
 		Context.clearSession();
-
+		
 		// When: Searching
 		List<PlanDefinition> results = provider.search(null);
-
+		
 		// Then: The result should include rationale on action.reason (not purpose)
-		PlanDefinition found = results.stream()
-		        .filter(pd -> "template-with-rationale".equals(pd.getName()))
-		        .findFirst()
+		PlanDefinition found = results.stream().filter(pd -> "template-with-rationale".equals(pd.getName())).findFirst()
 		        .orElse(null);
-
+		
 		assertThat(found, is(notNullValue()));
 		// Rationale is on action.reason, not purpose
 		assertThat(found.hasPurpose(), is(false));
 		assertThat(found.hasAction(), is(true));
 		assertThat(found.getActionFirstRep().hasReason(), is(true));
 		assertThat(found.getActionFirstRep().getReasonFirstRep().getText(), is("Important clinical reason"));
+	}
+	
+	@Test
+	public void read_withDefaultAssigneeRole_shouldEmitParticipantWithCoding() throws Exception {
+		executeDataSet("datasets/ProviderRoleTestDataset.xml");
+		ProviderRole role = Context.getProviderService().getProviderRoleByUuid("test-provider-role-uuid");
+		assertThat(role, is(notNullValue()));
+		
+		SystemTask systemTask = new SystemTask();
+		systemTask.setName("template-with-default-role");
+		systemTask.setTitle("Template With Default Role");
+		systemTask.setDefaultAssigneeProviderRoleId(role.getProviderRoleId());
+		tasksService.saveSystemTask(systemTask);
+		
+		Context.flushSession();
+		Context.clearSession();
+		
+		PlanDefinition result = provider.read(new IdType(systemTask.getUuid()));
+		
+		assertThat(result, is(notNullValue()));
+		assertThat(result.hasAction(), is(true));
+		PlanDefinition.PlanDefinitionActionComponent action = result.getActionFirstRep();
+		assertThat(action.hasParticipant(), is(true));
+		PlanDefinition.PlanDefinitionActionParticipantComponent participant = action.getParticipantFirstRep();
+		assertThat(participant.getType(), is(PlanDefinition.ActionParticipantType.PRACTITIONER));
+		assertThat(participant.hasRole(), is(true));
+		assertThat(participant.getRole().getCodingFirstRep().getSystem(), is("PractitionerRole"));
+		assertThat(participant.getRole().getCodingFirstRep().getCode(), is("test-provider-role-uuid"));
+		assertThat(participant.getRole().getCodingFirstRep().getDisplay(), is("Test Provider Role"));
 	}
 }

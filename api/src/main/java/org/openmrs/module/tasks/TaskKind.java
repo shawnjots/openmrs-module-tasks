@@ -10,22 +10,16 @@
 package org.openmrs.module.tasks;
 
 /**
- * Enumeration of due date types for tasks.
+ * This internal enum mirrors {@code org.hl7.fhir.r4.model.CarePlan.CarePlanActivityKind} and is
+ * meant to protect against future regressions, largely if HL7 changes the underlying value set.
  */
-public enum DueDateType {
-	
-	/**
-	 * Due date is a specific date.
-	 */
-	DATE,
-	
-	/**
-	 * Due date is relative to the current visit.
-	 */
-	THIS_VISIT,
-	
-	/**
-	 * Due date is relative to the next visit.
-	 */
-	NEXT_VISIT
+public enum TaskKind {
+	APPOINTMENT,
+	COMMUNICATIONREQUEST,
+	DEVICEREQUEST,
+	MEDICATIONREQUEST,
+	NUTRITIONORDER,
+	SERVICEREQUEST,
+	TASK,
+	VISIONPRESCRIPTION
 }

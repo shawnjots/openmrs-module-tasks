@@ -1,8 +1,20 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public License,
+ * v. 2.0. If a copy of the MPL was not distributed with this file, You can
+ * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
+ * the terms of the Healthcare Disclaimer located at http://openmrs.org/license.
+ *
+ * Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
+ * graphic logo is a trademark of OpenMRS Inc.
+ */
 package org.openmrs.module.tasks.web.controller;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +30,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -44,7 +57,7 @@ public class CarePlanRestController {
 	}
 	
 	@GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<JsonNode> search(@RequestParam(name = "subject") String subject) {
+	public ResponseEntity<JsonNode> search(@RequestParam(name = "subject", required = false) String subject) {
 		List<CarePlan> carePlans = carePlanFhirResourceProvider.search(subject);
 		
 		Bundle bundle = new Bundle();
@@ -54,20 +67,12 @@ public class CarePlanRestController {
 		bundle.setTotal(carePlans.size());
 		carePlans.forEach(carePlan -> bundle.addEntry().setResource(carePlan));
 		
-		return ResponseEntity.ok()
-		        .contentType(MediaType.APPLICATION_JSON)
-		        .body(encodeResource(bundle));
+		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(encodeResource(bundle));
 	}
 	
 	@GetMapping(path = "/{carePlanId}", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<JsonNode> read(@PathVariable("carePlanId") String carePlanId) {
 		CarePlan carePlan = carePlanFhirResourceProvider.read(new IdType("CarePlan", carePlanId));
-		
-		if (carePlan == null) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(MediaType.APPLICATION_JSON)
-			        .body(errorNode("CarePlan not found for ID: " + carePlanId));
-		}
-		
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(encodeResource(carePlan));
 	}
 	
@@ -87,19 +92,30 @@ public class CarePlanRestController {
 		        .body(encodeResource(savedCarePlan));
 	}
 	
-	@ExceptionHandler(IllegalArgumentException.class)
-	public ResponseEntity<JsonNode> handleIllegalArgument(IllegalArgumentException ex) {
+	@PutMapping(path = "/{carePlanId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<JsonNode> update(@PathVariable("carePlanId") String carePlanId,
+	        @RequestBody String carePlanPayload) {
+		CarePlan carePlan = parseCarePlan(carePlanPayload);
+		
+		MethodOutcome outcome = carePlanFhirResourceProvider.update(new IdType("CarePlan", carePlanId), carePlan);
+		CarePlan savedCarePlan = (CarePlan) outcome.getResource();
+		
+		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(encodeResource(savedCarePlan));
+	}
+	
+	@ExceptionHandler(ResourceNotFoundException.class)
+	public ResponseEntity<JsonNode> handleResourceNotFound(ResourceNotFoundException ex) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(MediaType.APPLICATION_JSON)
+		        .body(errorNode(ex.getMessage()));
+	}
+	
+	@ExceptionHandler({ InvalidRequestException.class, DataFormatException.class, IllegalArgumentException.class })
+	public ResponseEntity<JsonNode> handleBadRequest(Exception ex) {
 		return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON).body(errorNode(ex.getMessage()));
 	}
 	
 	private CarePlan parseCarePlan(String payload) {
-		try {
-			IParser parser = FHIR_CONTEXT.newJsonParser();
-			return parser.parseResource(CarePlan.class, payload);
-		}
-		catch (Exception ex) {
-			throw new IllegalArgumentException("Invalid CarePlan payload", ex);
-		}
+		return FHIR_CONTEXT.newJsonParser().parseResource(CarePlan.class, payload);
 	}
 	
 	private JsonNode encodeResource(org.hl7.fhir.instance.model.api.IBaseResource resource) {

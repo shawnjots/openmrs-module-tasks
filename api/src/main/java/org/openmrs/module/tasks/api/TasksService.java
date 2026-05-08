@@ -1,4 +1,4 @@
-/**
+/*
  * This Source Code Form is subject to the terms of the Mozilla Public License,
  * v. 2.0. If a copy of the MPL was not distributed with this file, You can
  * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
@@ -25,8 +25,8 @@ import java.util.List;
 public interface TasksService extends OpenmrsService {
 	
 	/**
-	 * Returns a task by uuid. It can be called by any authenticated user. It is fetched in read
-	 * only transaction.
+	 * Returns a task by uuid. It can be called by any authenticated user. It is fetched in read only
+	 * transaction.
 	 * 
 	 * @param uuid
 	 * @return
@@ -47,15 +47,38 @@ public interface TasksService extends OpenmrsService {
 	Task saveTask(Task task) throws APIException;
 	
 	/**
-	 * Returns all tasks for a patient. It can be called by any authenticated user. It is fetched in
-	 * read only transaction.
-	 * 
-	 * @param patientId
-	 * @return
+	 * Returns all non-voided tasks for a patient, ordered by date created (newest first).
+	 *
+	 * @param patientId the patient id
+	 * @return the non-voided tasks for the patient
 	 * @throws APIException
 	 */
 	@Authorized(TasksConfig.TASKS_VIEW_PRIVILEGE)
 	List<Task> getTasksByPatientId(Integer patientId) throws APIException;
+	
+	/**
+	 * Returns tasks for a patient, optionally including voided tasks; ordered by date created (newest
+	 * first).
+	 *
+	 * @param patientId the patient id
+	 * @param includeVoided whether to include voided tasks in the result
+	 * @return the tasks for the patient
+	 * @throws APIException
+	 */
+	@Authorized(TasksConfig.TASKS_VIEW_PRIVILEGE)
+	List<Task> getTasksByPatientId(Integer patientId, boolean includeVoided) throws APIException;
+	
+	/**
+	 * Returns the non-voided tasks for a patient whose status is not CANCELLED or ENTEREDINERROR;
+	 * COMPLETED and STOPPED tasks are still returned because they represent legitimate history that
+	 * clients may want to display. Ordered by date created (newest first).
+	 *
+	 * @param patientId the patient id
+	 * @return active tasks for the patient
+	 * @throws APIException
+	 */
+	@Authorized(TasksConfig.TASKS_VIEW_PRIVILEGE)
+	List<Task> getActiveTasksByPatientId(Integer patientId) throws APIException;
 	
 	/**
 	 * Voids a task with the provided reason.
