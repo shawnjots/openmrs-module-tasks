@@ -43,7 +43,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/ws/rest/v1/tasks/careplan")
+@RequestMapping("/rest/v1/tasks/careplan")
 public class CarePlanRestController {
 	
 	private static final FhirContext FHIR_CONTEXT = FhirContext.forR4Cached();

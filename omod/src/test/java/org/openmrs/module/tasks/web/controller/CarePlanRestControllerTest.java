@@ -64,7 +64,7 @@ public class CarePlanRestControllerTest {
 		carePlan.setId(CARE_PLAN_UUID);
 		when(resourceProvider.search("Patient/" + PATIENT_UUID)).thenReturn(Collections.singletonList(carePlan));
 		
-		mockMvc.perform(get("/ws/rest/v1/tasks/careplan").param("subject", "Patient/" + PATIENT_UUID))
+		mockMvc.perform(get("/rest/v1/tasks/careplan").param("subject", "Patient/" + PATIENT_UUID))
 		        .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
 		        .andExpect(jsonPath("$.resourceType").value("Bundle")).andExpect(jsonPath("$.total").value(1))
 		        .andExpect(jsonPath("$.entry[0].resource.resourceType").value("CarePlan"))
@@ -75,7 +75,7 @@ public class CarePlanRestControllerTest {
 	public void search_withEmptyResult_shouldReturnBundleWithZeroTotal() throws Exception {
 		when(resourceProvider.search(PATIENT_UUID)).thenReturn(Collections.emptyList());
 		
-		mockMvc.perform(get("/ws/rest/v1/tasks/careplan").param("subject", PATIENT_UUID)).andExpect(status().isOk())
+		mockMvc.perform(get("/rest/v1/tasks/careplan").param("subject", PATIENT_UUID)).andExpect(status().isOk())
 		        .andExpect(jsonPath("$.resourceType").value("Bundle")).andExpect(jsonPath("$.total").value(0));
 	}
 	
@@ -85,7 +85,7 @@ public class CarePlanRestControllerTest {
 		carePlan.setId(CARE_PLAN_UUID);
 		when(resourceProvider.read(any(IdType.class))).thenReturn(carePlan);
 		
-		mockMvc.perform(get("/ws/rest/v1/tasks/careplan/{id}", CARE_PLAN_UUID)).andExpect(status().isOk())
+		mockMvc.perform(get("/rest/v1/tasks/careplan/{id}", CARE_PLAN_UUID)).andExpect(status().isOk())
 		        .andExpect(jsonPath("$.resourceType").value("CarePlan")).andExpect(jsonPath("$.id").value(CARE_PLAN_UUID));
 	}
 	
@@ -94,7 +94,7 @@ public class CarePlanRestControllerTest {
 		when(resourceProvider.read(any(IdType.class)))
 		        .thenThrow(new ResourceNotFoundException(new IdType("CarePlan", CARE_PLAN_UUID)));
 		
-		mockMvc.perform(get("/ws/rest/v1/tasks/careplan/{id}", CARE_PLAN_UUID)).andExpect(status().isNotFound())
+		mockMvc.perform(get("/rest/v1/tasks/careplan/{id}", CARE_PLAN_UUID)).andExpect(status().isNotFound())
 		        .andExpect(jsonPath("$.error").exists());
 	}
 	
@@ -109,7 +109,7 @@ public class CarePlanRestControllerTest {
 		
 		String payload = FhirContext.forR4Cached().newJsonParser().encodeResourceToString(newCarePlanWithSubject());
 		
-		mockMvc.perform(post("/ws/rest/v1/tasks/careplan").contentType(MediaType.APPLICATION_JSON).content(payload))
+		mockMvc.perform(post("/rest/v1/tasks/careplan").contentType(MediaType.APPLICATION_JSON).content(payload))
 		        .andExpect(status().isCreated()).andExpect(header().string("Location", "CarePlan/" + CARE_PLAN_UUID))
 		        .andExpect(jsonPath("$.resourceType").value("CarePlan")).andExpect(jsonPath("$.id").value(CARE_PLAN_UUID));
 	}
@@ -121,14 +121,14 @@ public class CarePlanRestControllerTest {
 		
 		String payload = FhirContext.forR4Cached().newJsonParser().encodeResourceToString(newCarePlanWithSubject());
 		
-		mockMvc.perform(post("/ws/rest/v1/tasks/careplan").contentType(MediaType.APPLICATION_JSON).content(payload))
+		mockMvc.perform(post("/rest/v1/tasks/careplan").contentType(MediaType.APPLICATION_JSON).content(payload))
 		        .andExpect(status().isBadRequest())
 		        .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("Patient reference")));
 	}
 	
 	@Test
 	public void create_withMalformedJson_shouldReturn400() throws Exception {
-		mockMvc.perform(post("/ws/rest/v1/tasks/careplan").contentType(MediaType.APPLICATION_JSON).content("{ not json"))
+		mockMvc.perform(post("/rest/v1/tasks/careplan").contentType(MediaType.APPLICATION_JSON).content("{ not json"))
 		        .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
 	}
 	
@@ -144,14 +144,14 @@ public class CarePlanRestControllerTest {
 		String payload = FhirContext.forR4Cached().newJsonParser().encodeResourceToString(newCarePlanWithSubject());
 		
 		mockMvc.perform(
-		    put("/ws/rest/v1/tasks/careplan/{id}", CARE_PLAN_UUID).contentType(MediaType.APPLICATION_JSON).content(payload))
+		    put("/rest/v1/tasks/careplan/{id}", CARE_PLAN_UUID).contentType(MediaType.APPLICATION_JSON).content(payload))
 		        .andExpect(status().isOk()).andExpect(jsonPath("$.resourceType").value("CarePlan"))
 		        .andExpect(jsonPath("$.id").value(CARE_PLAN_UUID));
 	}
 	
 	@Test
 	public void update_withMalformedJson_shouldReturn400() throws Exception {
-		mockMvc.perform(put("/ws/rest/v1/tasks/careplan/{id}", CARE_PLAN_UUID).contentType(MediaType.APPLICATION_JSON)
+		mockMvc.perform(put("/rest/v1/tasks/careplan/{id}", CARE_PLAN_UUID).contentType(MediaType.APPLICATION_JSON)
 		        .content("{ not json")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
 	}
 	
@@ -163,7 +163,7 @@ public class CarePlanRestControllerTest {
 		String payload = FhirContext.forR4Cached().newJsonParser().encodeResourceToString(newCarePlanWithSubject());
 		
 		mockMvc.perform(
-		    put("/ws/rest/v1/tasks/careplan/{id}", CARE_PLAN_UUID).contentType(MediaType.APPLICATION_JSON).content(payload))
+		    put("/rest/v1/tasks/careplan/{id}", CARE_PLAN_UUID).contentType(MediaType.APPLICATION_JSON).content(payload))
 		        .andExpect(status().isNotFound()).andExpect(jsonPath("$.error").exists());
 	}
 	
